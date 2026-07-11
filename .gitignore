@@ -1,0 +1,14 @@
+# Local Netlify folder
+.netlify
+
+# Dependencies
+node_modules
+
+# Web build output (regenerate with: npm run build:web)
+www
+
+# Generated icon source (copy of assets/app-store/app-icon-1024.png)
+assets/icon.png
+
+# iOS build artifacts are handled by ios/.gitignore
+# (the native Xcode project itself IS kept)

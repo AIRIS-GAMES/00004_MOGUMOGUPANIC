@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7ec8e3">
+<title>MOGU MOGU PANIC</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <canvas id="game"></canvas>
+
+  <div id="hud" class="screen hidden">
+    <div class="hud-top">
+      <div class="hud-stat">
+        <span class="hud-label">SCORE</span>
+        <span class="hud-value" id="hud-score">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">TARGET</span>
+        <span class="hud-value" id="hud-target">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">SIZE</span>
+        <span class="hud-value" id="hud-size">&times;1.00</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-label">TIME</span>
+        <span class="hud-value" id="hud-time">60</span>
+      </div>
+      <button id="btn-pause" class="icon-btn" aria-label="pause">&#10074;&#10074;</button>
+    </div>
+
+    <div id="combo-pop"></div>
+
+    <div id="stage-intro" class="stage-intro hidden" aria-live="polite">
+      <span id="stage-intro-number">STAGE 1</span>
+      <strong id="stage-intro-name">はじまりの街</strong>
+      <p id="stage-intro-story"></p>
+    </div>
+
+    <div id="gauge-wrap">
+      <div id="gauge-fill"></div>
+      <span id="gauge-label">VACUUM</span>
+    </div>
+  </div>
+
+  <div id="screen-splash" class="screen overlay splash">
+  </div>
+
+  <div id="screen-loading" class="screen overlay solid hidden">
+    <h1 class="load-title">MOGU MOGU PANIC</h1>
+    <div class="load-bar"><div id="load-bar-fill"></div></div>
+    <p class="load-text">よみこみちゅう...</p>
+  </div>
+
+  <div id="screen-title" class="screen overlay hidden">
+    <h1 class="game-title"><span>MOGU</span> <span>MOGU</span><br><span>PANIC</span></h1>
+    <div class="coin-balance" aria-label="所持コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="title-coins">0</span></div>
+    <p class="title-hint">ドラッグでうごいて エラーをすいこもう！</p>
+    <div class="menu">
+      <button id="btn-start" class="btn btn-primary">CONTINUE - STAGE 1</button>
+      <button id="btn-stage-select" class="btn">STAGE SELECT</button>
+      <button id="btn-skin" class="btn">SKIN</button>
+      <button id="btn-sound" class="btn">SOUND : ON</button>
+      <a class="cross-promo" href="https://apps.apple.com/jp/app/arcade-heaven-star-match/id6784988703" target="_blank" rel="noopener noreferrer" aria-label="Arcade Heaven Star MatchをApp Storeでダウンロード">
+        <img src="public/star-match-icon.jpg" alt="">
+        <span><small>このキャラクターのパズルゲーム</small><strong>Arcade Heaven Star Match</strong><b>App Storeで見る</b></span>
+        <span class="cross-promo-arrow" aria-hidden="true">&#8250;</span>
+      </a>
+      <a class="legal-link" href="https://airishu.github.io/airis-games-legal/privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+    </div>
+  </div>
+
+  <div id="screen-stage" class="screen overlay solid hidden">
+    <h2 class="screen-heading">STAGE</h2>
+    <div id="stage-grid"></div>
+    <button id="btn-stage-back" class="btn">BACK</button>
+  </div>
+
+  <div id="screen-skin" class="screen overlay solid hidden">
+    <h2 class="screen-heading">SHOP</h2>
+    <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="shop-coins">0</span></div>
+    <p id="shop-notice" class="shop-notice" aria-live="polite"></p>
+    <div class="shop-tabs" role="tablist">
+      <button id="btn-shop-skins" class="shop-tab selected" type="button">SKINS</button>
+      <button id="btn-shop-effects" class="shop-tab" type="button">EFFECTS</button>
+    </div>
+    <div id="skin-grid"></div>
+    <div id="effect-grid" class="hidden"></div>
+    <button id="btn-skin-back" class="btn">BACK</button>
+  </div>
+
+  <div id="screen-boost" class="screen overlay solid hidden">
+    <h2 class="screen-heading">BOOST</h2>
+    <p id="boost-stage-name" class="boost-stage-name">STAGE 1</p>
+    <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="boost-coins">0</span></div>
+    <div id="boost-grid"></div>
+    <div class="boost-total">TOTAL <strong id="boost-total">0</strong></div>
+    <button id="btn-boost-start" class="btn btn-primary">START</button>
+    <button id="btn-boost-back" class="btn">BACK</button>
+  </div>
+
+  <div id="screen-pause" class="screen overlay hidden">
+    <div class="panel">
+      <h2 class="screen-heading">PAUSE</h2>
+      <button id="btn-resume" class="btn btn-primary">RESUME</button>
+      <button id="btn-pause-home" class="btn">HOME</button>
+    </div>
+  </div>
+
+  <div id="screen-result" class="screen overlay hidden">
+    <div class="panel">
+      <h2 class="screen-heading" id="res-title">TIME UP!</h2>
+      <div id="res-reward" class="reward-badge hidden">+0 COINS</div>
+      <div id="res-new" class="new-badge hidden">NEW RECORD!</div>
+      <p id="res-story" class="result-story"></p>
+      <dl class="result-list">
+        <div><dt>SCORE</dt><dd id="res-score">0</dd></div>
+        <div><dt>BEST</dt><dd id="res-best">0</dd></div>
+        <div><dt>EATEN</dt><dd id="res-count">0</dd></div>
+        <div><dt>MAX SIZE</dt><dd id="res-size">&times;1.00</dd></div>
+      </dl>
+      <button id="btn-next-stage" class="btn btn-primary hidden">NEXT STAGE</button>
+      <button id="btn-again" class="btn">PLAY AGAIN</button>
+      <button id="btn-result-home" class="btn">HOME</button>
+    </div>
+  </div>
+
+  <div id="login-bonus" class="screen overlay bonus-overlay hidden" role="dialog" aria-modal="true">
+    <div class="panel bonus-panel">
+      <img class="bonus-coin" src="public/opt/cosmo-coin.webp" alt="コスモコイン">
+      <h2 class="screen-heading">LOGIN BONUS</h2>
+      <p>今日のボーナス</p>
+      <strong id="login-bonus-amount">+100 COINS</strong>
+      <button id="btn-login-bonus" class="btn btn-primary">GET!</button>
+    </div>
+  </div>
+
+  <div id="privacy-banner" class="privacy-banner hidden" role="dialog" aria-live="polite" aria-label="プライバシーポリシー">
+    <p>AIRIS GAMESは、サービス向上・広告配信のためGoogle Analytics・AdSenseを使用する場合があります。同意すると、導入時に解析・広告Cookieが有効になります。詳しくは<a href="https://airishu.github.io/airis-games-legal/privacy.html" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>をご覧ください。</p>
+    <div class="privacy-actions">
+      <button id="btn-privacy-close" class="privacy-btn privacy-btn-ghost" type="button">閉じる</button>
+      <button id="btn-privacy-accept" class="privacy-btn" type="button">同意する</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="js/GameAnalytics.min.js"></script>
+<script src="js/Analytics.js"></script>
+<script src="js/Storage.js"></script>
+<script src="js/Audio.js"></script>
+<script src="js/Object.js"></script>
+<script src="js/Spawner.js"></script>
+<script src="js/Camera.js"></script>
+<script src="js/Player.js"></script>
+<script src="js/UI.js"></script>
+<script src="js/Game.js"></script>
+<script src="main.js"></script>
+</body>
+</html>

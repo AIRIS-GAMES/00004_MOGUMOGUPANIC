@@ -1,0 +1,11 @@
+{
+  "appId": "com.airisgames.mogumogupanic",
+  "appName": "MOGU MOGU PANIC",
+  "webDir": "www",
+  "backgroundColor": "#7ec8e3",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#7ec8e3",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

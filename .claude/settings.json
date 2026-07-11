@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(run)",
+      "Skill(run:*)",
+      "PowerShell(Get-Command chromium-cli -ErrorAction SilentlyContinue)",
+      "PowerShell(npm ls -g --depth=0 2>$null; Test-Path \"$env:USERPROFILE\\\\AppData\\\\Local\\\\ms-playwright\")",
+      "PowerShell(Start-Process node -ArgumentList \"C:\\\\Users\\\\ramur\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--games-hole\\\\195bbf80-2cbd-4f88-be87-ae918d4e6efe\\\\scratchpad\\\\server.js\" -WindowStyle Hidden; Start-Sleep 1; \\(Invoke-WebRequest http://localhost:8123/ -UseBasicParsing\\).StatusCode)",
+      "PowerShell(node --check c:\\\\games\\\\hole\\\\js\\\\Object.js)",
+      "PowerShell(Start-Process node -ArgumentList \"C:\\\\Users\\\\ramur\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--games-hole\\\\195bbf80-2cbd-4f88-be87-ae918d4e6efe\\\\scratchpad\\\\server.js\" -WindowStyle Hidden)",
+      "PowerShell(if \\($?\\) { \"syntax OK\" })",
+      "PowerShell($f='c:\\\\games\\\\hole\\\\js\\\\Player.js'; \\(Get-Content $f -Raw -Encoding utf8\\) -replace \"openSrc: 'public/\\(\\\\w+\\)\\\\.PNG'\", \"openSrc: 'public/opt/`$1.webp'\" -replace \"closedSrc: 'public/\\(\\\\w+\\)\\\\.PNG'\", \"closedSrc: 'public/opt/`$1.webp'\" | Set-Content $f -Encoding utf8 -NoNewline; Select-String -Path $f -Pattern \"Src:\")",
+      "PowerShell($files = 'c:\\\\games\\\\hole\\\\index.html', 'c:\\\\games\\\\hole\\\\js\\\\UI.js'; foreach \\($f in $files\\) { \\(Get-Content $f -Raw -Encoding utf8\\) -replace 'public/cosmo-coin\\\\.png', 'public/opt/cosmo-coin.webp' | Set-Content $f -Encoding utf8 -NoNewline }; Select-String -Path $files -Pattern 'cosmo-coin' | Measure-Object | Select-Object Count; Select-String -Path $files -Pattern 'cosmo-coin\\\\.png' | Measure-Object | Select-Object Count)",
+      "PowerShell(netlify status)",
+      "PowerShell(netlify deploy --prod --dir \"C:\\\\Users\\\\ramur\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--games-hole\\\\195bbf80-2cbd-4f88-be87-ae918d4e6efe\\\\scratchpad\\\\dist\" --message \"Fix review items 1-6 + privacy policy links + WebP assets\")",
+      "Bash(curl -sSL -o GameAnalytics.min.js https://download.gameanalytics.com/js/GameAnalytics.min.js)",
+      "Read(//c/Users/ramur/AppData/Local/Temp/claude/c--games-hole/195bbf80-2cbd-4f88-be87-ae918d4e6efe/scratchpad/**)",
+      "Bash(npm install *)",
+      "Bash(node --check js/Game.js)",
+      "PowerShell(netlify deploy --prod --dir \"C:\\\\Users\\\\ramur\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--games-hole\\\\195bbf80-2cbd-4f88-be87-ae918d4e6efe\\\\scratchpad\\\\dist\" --message \"Add GameAnalytics \\(consent-gated, HTML5 SDK\\)\")",
+      "Bash(npm --version)",
+      "Bash(grep -vE '^\\\\.$|^\\\\.\\\\.$')",
+      "Bash(npm run *)",
+      "Bash(npx cap *)",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\);console.log\\(JSON.stringify\\({...p.dependencies,...p.devDependencies},null,1\\)\\)\")"
+    ]
+  }
+}
