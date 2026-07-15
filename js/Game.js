@@ -202,14 +202,12 @@ class Game {
   static ROADS = [700, 1400, 2100, 2800]; // 道路の中心座標(縦横共通)
   static ROAD_W = 110;
 
-  constructor(canvas, images, ui, audio, privacy = null) {
+  constructor(canvas, images, ui, audio) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.images = images; // { skinId: {open, closed} }
     this.ui = ui;
     this.audio = audio;
-    this.privacy = privacy; // プライバシーバナー状態(main.js から注入)
-
     this.state = 'title'; // 'title' | 'skin' | 'play' | 'pause' | 'result'
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.w = 0;
@@ -416,14 +414,7 @@ class Game {
     this.ui.updateContinueStage(Math.min(Storage.getUnlockedStage(), Game.STAGES.length));
     this.ui.showScreen('title');
 
-    // ダイアログの直列化:バナー未対応ならまずバナーだけ表示し、
-    // 閉じられてからログインボーナスを判定する
-    if (this.privacy && this.privacy.pending) {
-      this.privacy.onDismiss = () => this.checkDailyBonus();
-      this.privacy.show();
-    } else {
-      this.checkDailyBonus();
-    }
+    this.checkDailyBonus();
   }
 
   /**
@@ -434,7 +425,6 @@ class Game {
    */
   checkDailyBonus() {
     if (this.state !== 'title') return;
-    if (this.privacy && this.privacy.pending) return;
     const total = Storage.claimDailyBonus(Game.DAILY_BONUS);
     if (total !== null) {
       this.ui.updateCoins(total);
@@ -444,13 +434,7 @@ class Game {
     }
   }
 
-  /** タイトルから別画面へ移る時の共通処理(バナーを一旦しまう) */
-  _leaveTitle() {
-    if (this.privacy && this.privacy.pending) this.privacy.hide();
-  }
-
   openStages() {
-    this._leaveTitle();
     this.state = 'stage';
     this.ui.buildStageGrid(
       Game.STAGES,
@@ -462,7 +446,6 @@ class Game {
   }
 
   openSkin() {
-    this._leaveTitle();
     this.state = 'skin';
     this.ui.showShopNotice();
     this.renderShop();
@@ -523,7 +506,6 @@ class Game {
   }
 
   openBoosts(stageId, backTarget) {
-    this._leaveTitle();
     const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
     this.pendingStageId = stage.id;
     this.boostBackTarget = backTarget;

@@ -33,53 +33,10 @@
     return c;
   }
 
-  /**
-   * プライバシーバナーの状態管理。
-   * 表示タイミングは Game 側が制御する(タイトル表示中のみ出し、
-   * ログインボーナス等と重ならないよう直列化するため)。
-   * @returns {{pending:boolean, show:Function, hide:Function, onDismiss:?Function}}
-   */
-  function setupPrivacyBanner() {
-    const banner = document.getElementById('privacy-banner');
-    const accept = document.getElementById('btn-privacy-accept');
-    const close = document.getElementById('btn-privacy-close');
-    const state = { pending: false, show: () => {}, hide: () => {}, onDismiss: null };
-    if (!banner || !accept || !close) return state;
-
-    const key = 'airisPrivacyConsent';
-    try {
-      if (localStorage.getItem(key) === 'accepted') {
-        window.__airisCookieConsent = true;
-        return state;
-      }
-    } catch (_) { /* localStorage不可なら毎回表示 */ }
-
-    state.pending = true;
-    state.show = () => banner.classList.remove('hidden');
-    state.hide = () => banner.classList.add('hidden');
-
-    const dismiss = (accepted) => {
-      if (accepted) {
-        try { localStorage.setItem(key, 'accepted'); } catch (_) {}
-        window.__airisCookieConsent = true;
-        Analytics.enableAndInit(); // 同意時のみ計測開始
-      }
-      state.pending = false;
-      banner.classList.add('hidden');
-      if (state.onDismiss) state.onDismiss();
-    };
-    accept.addEventListener('click', () => dismiss(true));
-    close.addEventListener('click', () => dismiss(false));
-    return state;
-  }
-
   window.addEventListener('load', async () => {
     await Storage.init();
     const ui = new UI();
     Analytics.configure(GA_GAME_KEY, GA_SECRET_KEY);
-    const privacy = setupPrivacyBanner();
-    // 既に同意済みのユーザー(再訪問)はこの時点で計測を開始
-    if (window.__airisCookieConsent) Analytics.enableAndInit();
     ui.showScreen('splash');
     const splashDelay = new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -110,7 +67,7 @@
       return;
     }
 
-    const game = new Game(document.getElementById('game'), images, ui, audio, privacy);
+    const game = new Game(document.getElementById('game'), images, ui, audio);
     game.showTitle();
     document.addEventListener('visibilitychange', () => {
       audio.setBackgroundPaused(document.hidden);
