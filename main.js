@@ -33,10 +33,85 @@
     return c;
   }
 
-  window.addEventListener('load', async () => {
+  /**
+   * プライバシーバナーの状態管理。
+   * 表示タイミングは Game 側が制御する(タイトル表示中のみ出し、
+   * ログインボーナス等と重ならないよう直列化するため)。
+   * @returns {{pending:boolean, show:Function, hide:Function, onDismiss:?Function}}
+   */
+  function setupPrivacyBanner() {
+    const banner = document.getElementById('privacy-banner');
+    const accept = document.getElementById('btn-privacy-accept');
+    const close = document.getElementById('btn-privacy-close');
+    const state = { pending: false, show: () => {}, hide: () => {}, onDismiss: null };
+    if (!banner || !accept || !close) return state;
+
+    const key = 'airisPrivacyConsent';
+    try {
+      if (localStorage.getItem(key) === 'accepted') {
+        window.__airisCookieConsent = true;
+        return state;
+      }
+    } catch (_) { /* localStorage不可なら毎回表示 */ }
+
+    state.pending = true;
+    state.show = () => banner.classList.remove('hidden');
+    state.hide = () => banner.classList.add('hidden');
+
+    const dismiss = (accepted) => {
+      if (accepted) {
+        try { localStorage.setItem(key, 'accepted'); } catch (_) {}
+        window.__airisCookieConsent = true;
+        Analytics.enableAndInit(); // 同意時のみ計測開始
+      }
+      state.pending = false;
+      banner.classList.add('hidden');
+      if (state.onDismiss) state.onDismiss();
+    };
+    accept.addEventListener('click', () => dismiss(true));
+    close.addEventListener('click', () => dismiss(false));
+    return state;
+  }
+
+   window.addEventListener('load', async () => {
     await Storage.init();
+
+    const admob = window.Capacitor?.Plugins?.AdMob;
+
+   if (admob) {
+   try {
+    await admob.initialize();
+
+    const prepareAd = async () => {
+    await admob.prepareInterstitial({
+        adId: 'ca-app-pub-3169496152943405/3757878182',
+        isTesting: false
+    });
+};
+
+    await prepareAd();
+
+    window.showInterstitialAd = async () => {
+    try {
+    await admob.showInterstitial();
+    await prepareAd();
+    } catch (error) {
+    console.error('広告を表示できませんでした', error);
+    try {
+    await prepareAd();
+    } catch (_) {}
+    }
+    };
+   } catch (error) {
+    console.error('AdMobの初期化に失敗しました', error);
+  }
+   }
+
     const ui = new UI();
     Analytics.configure(GA_GAME_KEY, GA_SECRET_KEY);
+    const privacy = setupPrivacyBanner();
+    // 既に同意済みのユーザー(再訪問)はこの時点で計測を開始
+    if (window.__airisCookieConsent) Analytics.enableAndInit();
     ui.showScreen('splash');
     const splashDelay = new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -67,7 +142,7 @@
       return;
     }
 
-    const game = new Game(document.getElementById('game'), images, ui, audio);
+    const game = new Game(document.getElementById('game'), images, ui, audio, privacy);
     game.showTitle();
     document.addEventListener('visibilitychange', () => {
       audio.setBackgroundPaused(document.hidden);

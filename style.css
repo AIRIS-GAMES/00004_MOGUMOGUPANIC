@@ -722,6 +722,37 @@ html, body {
   .cross-promo img { width: 48px; height: 48px; }
 }
 
+/* ===== Privacy banner ===== */
+.privacy-banner {
+  position: fixed;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(12px + var(--safe-bottom));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--c-text);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  pointer-events: auto;
+}
+.privacy-banner p {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-align: left;
+}
+.privacy-banner a {
+  color: var(--c-primary-dark);
+  text-decoration: underline;
+  -webkit-tap-highlight-color: rgba(255, 107, 129, 0.2);
+}
+
 /* タイトル下部のプライバシーポリシーリンク */
 .legal-link {
   align-self: center;
@@ -731,4 +762,45 @@ html, body {
   text-decoration: underline;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
   padding: 6px 12px; /* タップしやすい余白 */
+}
+.privacy-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.privacy-btn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 14px;
+  background: var(--c-primary);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--c-primary-dark);
+}
+.privacy-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--c-primary-dark);
+}
+.privacy-btn-ghost {
+  background: #ece7e1;
+  color: var(--c-text);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.12);
+}
+.privacy-btn-ghost:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+@media (max-width: 560px) {
+  .privacy-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .privacy-actions {
+    justify-content: flex-end;
+  }
 }
