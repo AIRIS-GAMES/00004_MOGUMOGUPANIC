@@ -76,37 +76,6 @@
    window.addEventListener('load', async () => {
     await Storage.init();
 
-    const admob = window.Capacitor?.Plugins?.AdMob;
-
-   if (admob) {
-   try {
-    await admob.initialize();
-
-    const prepareAd = async () => {
-    await admob.prepareInterstitial({
-        adId: 'ca-app-pub-3169496152943405/3757878182',
-        isTesting: false
-    });
-};
-
-    await prepareAd();
-
-    window.showInterstitialAd = async () => {
-    try {
-    await admob.showInterstitial();
-    await prepareAd();
-    } catch (error) {
-    console.error('広告を表示できませんでした', error);
-    try {
-    await prepareAd();
-    } catch (_) {}
-    }
-    };
-   } catch (error) {
-    console.error('AdMobの初期化に失敗しました', error);
-  }
-   }
-
     const ui = new UI();
     Analytics.configure(GA_GAME_KEY, GA_SECRET_KEY);
     const privacy = setupPrivacyBanner();
@@ -116,7 +85,7 @@
     const splashDelay = new Promise(resolve => setTimeout(resolve, 2000));
 
     const audio = new AudioSys();
-    // モバイルの自動再生制限対策:最初のタップで AudioContext を有効化
+    // 最初のユーザー操作でファイル音声の再生を許可する
     window.addEventListener('pointerdown', () => audio.unlock());
 
     // スキン画像(開口/通常)をすべて読み込む
@@ -143,9 +112,10 @@
     }
 
     const game = new Game(document.getElementById('game'), images, ui, audio, privacy);
+    if (window.OhSunCollaboration) game.collaboration = new window.OhSunCollaboration(game);
     game.showTitle();
     document.addEventListener('visibilitychange', () => {
-      audio.setBackgroundPaused(document.hidden);
+      audio.setBackgroundPaused(document.hidden, 'visibility');
       if (document.hidden) Storage.flush();
       else game.checkDailyBonus();
     });
@@ -155,10 +125,15 @@
       appPlugin.addListener('appStateChange', ({ isActive }) => {
         audio.setBackgroundPaused(!isActive);
         if (isActive) game.checkDailyBonus();
-        else Storage.flush();
+        else {
+          game.pauseGame();
+          Storage.flush();
+        }
       });
     }
-    window.__game = game; // デバッグ用フック(コンソールから状態確認できる)
+      window.__game = game; // デバッグ用フック(コンソールから状態確認できる)
+      window.addEventListener('pagehide', () => audio.setBackgroundPaused(true, 'page'));
+      window.addEventListener('pageshow', () => audio.setBackgroundPaused(false, 'page'));
 
     // Capacitor(iOS/Android)では target=_blank の外部リンクが WebView 内で
     // 開けないため、Browser プラグイン経由でシステムブラウザに委譲する。

@@ -370,6 +370,7 @@ class GameObject {
   /** プールから取り出す時の初期化 */
   reset(type, x, y) {
     this.active = true;
+    this.scoreOnly = false;
     this.type = type;
     this.x = x;
     this.y = y;

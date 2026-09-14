@@ -171,7 +171,7 @@ class UI {
     const t = Math.max(0, Math.ceil(timeLeft));
     this.el.time.textContent = t;
     this.el.time.classList.toggle('warn', t <= 10);
-    this.el.target.textContent = targetScore.toLocaleString();
+    this.el.target.textContent = score >= targetScore && targetScore > 0 ? 'CLEAR ✓' : targetScore.toLocaleString();
   }
 
   setGauge(ratio, active) {
@@ -180,9 +180,12 @@ class UI {
   }
 
   /** コンボ表示(アニメを再トリガー) */
-  showCombo(mult) {
+  showCombo(mult, count) {
     const pop = this.el.comboPop;
-    pop.textContent = `COMBO ×${mult}`;
+    pop.textContent = `${count} COMBO · SCORE ×${mult}`;
+    const now = performance.now();
+    if (count > 2 && now - (this.lastComboAnimation || 0) < 500) return;
+    this.lastComboAnimation = now;
     pop.classList.remove('show');
     void pop.offsetWidth; // リフロー強制でアニメ再生し直し
     pop.classList.add('show');
@@ -291,9 +294,15 @@ class UI {
 
   /* ---- リザルト ---- */
 
-  showResult({ score, best, isNewBest, count, maxSize, cleared, reward, hasNext, stage }) {
+  showResult({ score, best, bestLabel = 'BEST', isNewBest, clearTime = null, bestTime = null, count, maxSize, cleared, reward, hasNext, stage }) {
+    const formatTime = value => value === null ? '—' : `${value.toFixed(2)}s`;
+    document.getElementById('res-clear-time').textContent = formatTime(clearTime);
+    document.getElementById('res-best-time').textContent = formatTime(bestTime);
+    document.getElementById('res-best-time-label').textContent = bestLabel === 'SUN BEST' ? 'SUN BEST TIME' : 'BEST TIME';
+    this.el.resNew.textContent = 'NEW BEST TIME!';
     this.el.resScore.textContent = score.toLocaleString();
     this.el.resBest.textContent = best.toLocaleString();
+    this.el.resBest.previousElementSibling.textContent = bestLabel;
     this.el.resCount.textContent = count.toLocaleString();
     this.el.resSize.textContent = `×${maxSize.toFixed(2)}`;
     this.el.resNew.classList.toggle('hidden', !isNewBest);

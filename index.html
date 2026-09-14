@@ -6,6 +6,11 @@
 <meta name="theme-color" content="#7ec8e3">
 <title>MOGU MOGU PANIC</title>
 <link rel="stylesheet" href="style.css">
+<link rel="preload" href="public/fonts/MPLUSRounded1c-Regular.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="public/fonts/MPLUSRounded1c-Black.ttf" as="font" type="font/ttf" crossorigin>
+<!-- OHSUN_COLLAB_START -->
+<link rel="stylesheet" href="collaborations/ohsun.css">
+<!-- OHSUN_COLLAB_END -->
 </head>
 <body>
 <div id="app">
@@ -118,6 +123,8 @@
       <div id="res-new" class="new-badge hidden">NEW RECORD!</div>
       <p id="res-story" class="result-story"></p>
       <dl class="result-list">
+        <div><dt>CLEAR TIME</dt><dd id="res-clear-time">—</dd></div>
+        <div><dt id="res-best-time-label">BEST TIME</dt><dd id="res-best-time">—</dd></div>
         <div><dt>SCORE</dt><dd id="res-score">0</dd></div>
         <div><dt>BEST</dt><dd id="res-best">0</dd></div>
         <div><dt>EATEN</dt><dd id="res-count">0</dd></div>
@@ -151,6 +158,10 @@
 <script src="js/Player.js"></script>
 <script src="js/UI.js"></script>
 <script src="js/Game.js"></script>
+<!-- OHSUN_COLLAB_START -->
+<script src="collaborations/ohsun.config.js"></script>
+<script src="collaborations/ohsun.js"></script>
+<!-- OHSUN_COLLAB_END -->
 <script src="main.js"></script>
 </body>
 </html>

@@ -4,14 +4,17 @@
   "private": true,
   "description": "MOGU MOGU PANIC - ハイパーカジュアルゲーム(Web + iOS/Capacitor)",
   "scripts": {
+    "capacitor:sync:after": "node scripts/normalize-ios-paths.cjs",
+    "build:collab-preview": "node scripts/build-web.js --collab-preview",
     "build:web": "node scripts/build-web.js",
-    "sync": "npm run build:web && cap sync",
-    "sync:ios": "npm run build:web && cap sync ios",
+    "sync": "npm run sync:ios",
+    "sync:ios": "node scripts/sync-ios.cjs",
+    "sync:ios:collab": "node scripts/sync-ios.cjs --collab-preview",
+    "sync:ios:normal": "node scripts/sync-ios.cjs --normal",
     "open:ios": "cap open ios",
     "icons": "capacitor-assets generate --ios --iconBackgroundColor #7ec8e3 --iconBackgroundColorDark #16323d"
   },
   "dependencies": {
-    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/core": "^8.4.1",

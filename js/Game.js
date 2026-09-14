@@ -269,7 +269,12 @@ class Game {
 
     // タブが隠れたら自動ポーズ
     document.addEventListener('visibilitychange', () => {
+      this._resetInput();
+      this._lastT = performance.now();
       if (document.hidden && this.state === 'play') this.pauseGame();
+    });
+    window.addEventListener('blur', () => {
+      this._resetInput();
     });
 
     // メインループ開始
@@ -291,6 +296,7 @@ class Game {
     const pos = (e) => ({ x: e.clientX, y: e.clientY });
 
     this.canvas.addEventListener('pointerdown', (e) => {
+      if (this.state !== 'play') return;
       if (this.input.active) return; // 最初の指のみ追跡
       const p = pos(e);
       this.input.active = true;
@@ -325,15 +331,31 @@ class Game {
     };
     this.canvas.addEventListener('pointerup', end);
     this.canvas.addEventListener('pointercancel', end);
+    this.canvas.addEventListener('lostpointercapture', end);
 
     // PC 用キーボード操作(WASD / 矢印)
-    window.addEventListener('keydown', (e) => this.keys.add(e.key.toLowerCase()));
+    window.addEventListener('keydown', (e) => {
+      const key = e.key.toLowerCase();
+      if (this.state !== 'play' || !['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'w', 'a', 's', 'd'].includes(key)) return;
+      e.preventDefault();
+      this.keys.add(key);
+    });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
 
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
   /** 正規化した移動入力を返す { active, dx, dy, ratio } */
+  _resetInput() {
+    this.keys.clear();
+    const id = this.input.id;
+    this.input.active = false;
+    this.input.id = null;
+    try {
+      if (id !== null && this.canvas.hasPointerCapture(id)) this.canvas.releasePointerCapture(id);
+    } catch (_) { /* Capture may already have been released by the browser. */ }
+  }
+
   _getMoveInput() {
     // キーボード優先(押されていれば)
     let kx = 0, ky = 0;
@@ -407,6 +429,8 @@ class Game {
   /* ================= 状態遷移 ================= */
 
   showTitle() {
+    this._resetInput();
+    this.collaboration?.leave();
     this.state = 'title';
     this.player = null;
     const center = Game.WORLD / 2;
@@ -446,6 +470,7 @@ class Game {
 
   /** タイトルから別画面へ移る時の共通処理(バナーを一旦しまう) */
   _leaveTitle() {
+    this._resetInput();
     if (this.privacy && this.privacy.pending) this.privacy.hide();
   }
 
@@ -550,6 +575,7 @@ class Game {
   }
 
   startGame(stageId = this.currentStageId, boostIds = []) {
+    this._resetInput();
     const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
     this.currentStageId = stage.id;
     const skinId = Storage.getSkin();
@@ -565,6 +591,8 @@ class Game {
 
     this.score = 0;
     this.timeLeft = stage.time + (this.activeBoosts.has('time') ? 5 : 0);
+    this.runTimeLimit = this.timeLeft;
+    this.clearTime = null;
     this.suckedCount = 0;
     this.maxScale = this.player.scale;
     this.comboCount = 0;
@@ -579,40 +607,53 @@ class Game {
     this.stageIntroTimer = 3.5;
     this.state = 'intro';
     this.input.active = false;
+    this.collaboration?.startRun();
+    this.sunRecord = Boolean(this.collaboration?.enabled);
     Analytics.stageStart(stage.id);
   }
 
   pauseGame() {
     if (this.state !== 'play') return;
+    this._resetInput();
     this.state = 'pause';
     this.input.active = false;
     this.ui.showScreen('hud', 'pause');
+    this.collaboration?.tick();
   }
 
   resumeGame() {
     if (this.state !== 'pause') return;
+    this._resetInput();
     this.state = 'play';
     this._lastT = performance.now(); // ポーズ中の経過時間を捨てる
     this.ui.showScreen('hud');
   }
 
   endGame() {
+    if (this.state !== 'play') return;
+    this._resetInput();
     this.state = 'result';
     this.input.active = false;
     this.audio.timeup();
 
+    this.collaboration?.leave();
+
     const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
 
-    // NEW RECORD はこのステージの「前回記録(>0)を上回った時」だけ表示する。
-    // ・ステージ間で目標が異なるため全体ベストでは判定しない(失敗時の誤表示を回避)
-    // ・初挑戦(前回0)は記録更新でも祝福しない(TRY AGAIN と同時に出ると不自然なため)
-    const prevStageBest = Storage.getStageBest(stage.id);
-    const isNewBest = this.score > prevStageBest && prevStageBest > 0;
-    if (this.score > prevStageBest) Storage.setStageBest(stage.id, this.score);
+    // Preserve score history; the record badge now celebrates faster clears.
+    const prevStageBest = Storage.getStageBest(stage.id, this.sunRecord);
+    let isNewBest = false;
+    if (this.score > prevStageBest) Storage.setStageBest(stage.id, this.score, this.sunRecord);
     // 全体ベスト(生涯ハイスコア)は別途更新し続ける
-    if (this.score > Storage.getBest()) Storage.setBest(this.score);
+    if (this.score > Storage.getBest(this.sunRecord)) Storage.setBest(this.score, this.sunRecord);
 
     const cleared = this.score >= stage.targetScore;
+    const previousTime = Storage.getClearTime(stage.id, this.sunRecord);
+    if (cleared && this.clearTime == null) this.clearTime = Math.max(0, this.runTimeLimit - this.timeLeft);
+    if (cleared && (previousTime === null || this.clearTime < previousTime)) {
+      Storage.setClearTime(stage.id, this.clearTime, this.sunRecord);
+      isNewBest = previousTime !== null;
+    }
     // 報酬:初回クリアは満額、再クリアは25%(コイン経済のインフレ防止)
     const firstClear = cleared && !Storage.hasClearedStage(stage.id);
     const reward = cleared
@@ -638,7 +679,10 @@ class Game {
     this.ui.showResult({
       score: this.score,
       best: Math.max(prevStageBest, this.score),
+      bestLabel: this.sunRecord ? 'SUN BEST' : 'BEST',
       isNewBest,
+      clearTime: cleared ? this.clearTime : null,
+      bestTime: Storage.getClearTime(stage.id, this.sunRecord),
       count: this.suckedCount,
       maxSize: this.maxScale,
       cleared,
@@ -646,22 +690,21 @@ class Game {
       hasNext: cleared && stage.id < Game.STAGES.length,
       stage,
     });
-    if (cleared) {
-  window.showInterstitialAd?.();
-}
   }
 
   /* ================= メインループ ================= */
 
   _loop(now) {
     requestAnimationFrame((t) => this._loop(t));
-    let dt = (now - this._lastT) / 1000;
+    this.collaboration?.tick();
+    const elapsed = Math.max(0, (now - this._lastT) / 1000);
     this._lastT = now;
-    dt = Math.min(dt, 0.05); // タブ復帰時などの巨大 dt を防ぐ
+    if (document.hidden) return;
+    const dt = Math.min(elapsed, 0.05); // Limit physics steps, not game clocks.
     this.time += dt;
 
-    if (this.state === 'intro') this._updateStageIntro(dt);
-    else if (this.state === 'play') this._updatePlay(dt);
+    if (this.state === 'intro') this._updateStageIntro(elapsed);
+    else if (this.state === 'play') this._updatePlay(dt, elapsed);
     else if (this.state === 'title' || this.state === 'skin') this._updateTitle(dt);
 
     this._render();
@@ -682,19 +725,29 @@ class Game {
   }
 
   /* ---- プレイ中の更新 ---- */
-  _updatePlay(dt) {
+  _updatePlay(dt, elapsed = dt) {
     const player = this.player;
-
-    player.update(this._getMoveInput(), dt, Game.WORLD);
-    this._updateSuction(dt);
-    this.spawner.update(dt, player.scale, this.camera, this.w, this.h);
-    this.particles.update(dt);
+    this.timeLeft = Math.max(0, this.timeLeft - elapsed);
+    if (this.timeLeft <= 0) {
+      const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+      this.ui.updateHUD(this.score, player.scale, 0, stage.targetScore);
+      this.endGame();
+      return;
+    }
 
     // コンボ猶予時間
     if (this.comboTimer > 0) {
-      this.comboTimer -= dt;
+      this.comboTimer -= elapsed;
       if (this.comboTimer <= 0) this.comboCount = 0;
     }
+
+    player.update(this._getMoveInput(), dt, Game.WORLD, elapsed);
+    this.collaboration?.update(dt, elapsed);
+    if (this._checkTarget()) return;
+    this._updateSuction(dt);
+    if (this.state !== 'play') return;
+    this.spawner.update(dt, player.scale, this.camera, this.w, this.h);
+    this.particles.update(dt);
 
     // バキューム中の常時エフェクト
     if (player.vacuumActive) {
@@ -708,18 +761,30 @@ class Game {
     this.camera.update(dt);
 
     // 制限時間
-    this.timeLeft -= dt;
     const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
     this.ui.updateHUD(this.score, player.scale, this.timeLeft, stage.targetScore);
     if (this.timeLeft <= 0) this.endGame();
   }
 
   /** 吸い込み判定と吸引の進行 */
+  _checkTarget() {
+    const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+    if (this.score < stage.targetScore) return false;
+    if (this.clearTime == null) this.clearTime = Math.max(0, this.runTimeLimit - this.timeLeft);
+    const event = this.collaboration;
+    const bonusRunning = event?.enabled && ['sunBonusEntering', 'sunBonusActive', 'sunBonusEnding'].includes(event.state);
+    if (bonusRunning) return false;
+    this.ui.updateHUD(this.score, this.player.scale, this.timeLeft, stage.targetScore);
+    this.endGame();
+    return true;
+  }
+
   _updateSuction(dt) {
     const player = this.player;
     const mouth = player.getMouth();
 
     this.spawner.forEachActive((obj) => {
+      if (this.state !== 'play') return;
       const dx = mouth.x - obj.x;
       const dy = mouth.y - obj.y;
       const dist = Math.hypot(dx, dy) || 0.001;
@@ -783,6 +848,10 @@ class Game {
     return t * t * (3 - 2 * t);
   }
 
+  static comboMultiplier(count) {
+    return Math.min(4, Math.max(1, count)) + Math.floor(Math.max(0, count) / 10);
+  }
+
   /** 吸い込み完了(スコア・成長・コンボ・演出) */
   _consume(obj) {
     const player = this.player;
@@ -791,16 +860,18 @@ class Game {
     this.spawner.kill(obj);
     this.suckedCount++;
 
-    // コンボ:2.0秒以内に連続で吸うと倍率アップ(×2 → ×3 → ×4)
+    // 2秒以内の連続取得。4個まで毎回、その後は10個ごとに倍率+1。
     this.comboCount++;
     this.comboTimer = 2.0;
-    const mult = Math.min(4, this.comboCount);
-    if (mult >= 2) this.ui.showCombo(mult);
+    const mult = Game.comboMultiplier(this.comboCount);
+    if (mult >= 2) this.ui.showCombo(mult, this.comboCount);
 
-    this.score += obj.type.score * mult * this.scoreMultiplier;
+    const itemScoreMultiplier = obj.scoreOnly ? 0.5 : 1;
+    this.score += Math.floor(obj.type.score * itemScoreMultiplier * mult * this.scoreMultiplier * (this.collaboration?.scoreMultiplier || 1));
+    this.collaboration?.onConsume(obj);
 
     // 成長:大きいオブジェクトほどよく育つ(基本 +0.01)
-    const grew = player.grow(0.01 + obj.type.req * 0.012);
+    const grew = !obj.scoreOnly && player.grow(0.01 + obj.type.req * 0.012);
     if (grew) {
       this.audio.grow();
       player.growFlash = 1;
@@ -810,7 +881,7 @@ class Game {
     this.maxScale = Math.max(this.maxScale, player.scale);
 
     // バキュームゲージ
-    if (player.chargeVacuum(0.13)) {
+    if (!obj.scoreOnly && player.chargeVacuum(0.13)) {
       player.startVacuum();
       Analytics.design('vacuum:activate');
       this.audio.vacuum();
@@ -825,6 +896,7 @@ class Game {
     this.particles.burst(mouth.x, mouth.y, player.skin.color, this._activeEffect());
     if (obj.type.req >= 3) this.camera.shake(Math.min(10, obj.r * 0.1));
     this.audio.pop(this.comboCount);
+    this._checkTarget();
   }
 
   _activeEffect() {
@@ -884,7 +956,10 @@ class Game {
     this.spawner.forEachActive((obj) => {
       if (obj.x + obj.r < view.l || obj.x - obj.r > view.r ||
           obj.y + obj.r < view.t || obj.y - obj.r > view.b) return;
-      const entry = { y: obj.y + obj.r * 0.5, draw: () => obj.draw(ctx) };
+      const entry = { y: obj.y + obj.r * 0.5, draw: () => {
+        if (this.collaboration) this.collaboration.drawItem(ctx, obj);
+        else obj.draw(ctx);
+      } };
       if (obj.state === 'suck' && this.player && this.player.mouthOpen > 0.55) suckingList.push(entry);
       else drawList.push(entry);
     });
@@ -910,6 +985,7 @@ class Game {
     ctx.restore();
 
     // 画面座標系:仮想ジョイスティック
+    this.collaboration?.renderWorld();
     if (this.state === 'play' && this.input.active) this._drawJoystick(ctx);
   }
 

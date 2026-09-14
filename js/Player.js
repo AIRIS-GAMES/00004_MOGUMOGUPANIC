@@ -84,7 +84,7 @@ class Player {
     const vac = this.vacuumActive ? 2 : 1;
     // 初心者補正:scale 1.0 で +25% → 1.5 で 0% に逓減(序盤の空振り軽減)
     const rookie = 1 + 0.25 * Math.max(0, Math.min(1, (1.5 - this.scale) * 2));
-    return (Player.BASE_MOUTH_R * this.scale * rookie * (this.skin.rangeMul || 1)) * vac + 4;
+    return ((Player.BASE_MOUTH_R * this.scale * rookie * (this.skin.rangeMul || 1)) * vac + 4) * (this.sunRangeMul || 1);
   }
 
   /** 口の中心(進行方向の少し前) */
@@ -114,7 +114,7 @@ class Player {
    * @param {object} input { active, dx, dy, ratio } 正規化済み入力
    * @param {number} worldSize マップの一辺
    */
-  update(input, dt, worldSize) {
+  update(input, dt, worldSize, elapsed = dt) {
     this.time += dt;
 
     // 移動
@@ -146,7 +146,7 @@ class Player {
 
     // バキュームモードのタイマー
     if (this.vacuumActive) {
-      this.vacuumTimer -= dt;
+      this.vacuumTimer -= elapsed;
       this.vacuumGauge = Math.max(0, this.vacuumTimer / this.vacuumDuration);
       if (this.vacuumTimer <= 0) {
         this.vacuumActive = false;

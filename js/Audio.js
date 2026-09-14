@@ -1,144 +1,84 @@
-/* =========================================================
- * AudioSys - Web Audio API による効果音合成
- * 音声ファイルを使わず、すべてオシレーター+ノイズで生成する。
- * iOS/Android 対策として、最初のユーザー操作時に unlock() を
- * 呼んで AudioContext を再開する必要がある。
- * ========================================================= */
+/* File-only audio. All playback uses HTMLAudioElement; synthesis is offline. */
 class AudioSys {
   constructor() {
-    this.ctx = null;
-    this.master = null;
     this.enabled = Storage.getSound();
-    this._noiseBuf = null;
+    this.unlocked = false;
+    this.backgroundReasons = new Set(document.hidden ? ['visibility'] : []);
     this.bgm = new Audio('public/Neon%20Arcade.mp3');
     this.bgm.loop = true;
     this.bgm.preload = 'auto';
-    this.bgm.volume = 0.22;
-    this.backgroundPaused = false;
-  }
-
-  /** 初回タップで呼ぶ。AudioContext の生成・再開 */
-  unlock() {
-    const AC = window.AudioContext || window.webkitAudioContext;
-    if (!AC) { this.playBgm(); return; }
-    if (!this.ctx) {
-      this.ctx = new AC();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = 0.32;
-      this.master.connect(this.ctx.destination);
+    this.bgm.volume = 0.20;
+    this.sfx = {};
+    const volumes = { button: .55, thud: .55, grow: .7, vacuum: .6, timeup: .7 };
+    for (let i = 1; i <= 14; i++) volumes['pop-' + i] = .7;
+    for (const [name, volume] of Object.entries(volumes)) {
+      const audio = new Audio('public/audio/' + name + '.wav');
+      audio.preload = 'auto';
+      audio.volume = volume;
+      this.sfx[name] = audio;
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
-    this.playBgm();
+    this.voices = [];
+    this.bgmPending = false;
   }
-
+  get backgroundPaused() { return this.backgroundReasons.size > 0 || document.hidden; }
+  get ready() { return this.enabled && this.unlocked && !this.backgroundPaused; }
+  unlock() { this.unlocked = true; this.playBgm(); }
   setEnabled(on) {
-    this.enabled = on;
-    Storage.setSound(on);
-    if (on) {
-      this.unlock();
-      this.playBgm();
-    } else {
-      this.bgm.pause();
-    }
+    this.enabled = Boolean(on);
+    Storage.setSound(this.enabled);
+    if (this.enabled) this.unlock();
+    else this.pauseAll();
   }
-
   playBgm() {
-    if (!this.enabled || this.backgroundPaused) return;
-    const promise = this.bgm.play();
-    if (promise) promise.catch(() => {});
+    if (!this.ready || !this.bgm.paused) return;
+    if (this.bgmPending) { this.bgmRetry = true; return; }
+    this.bgmPending = true;
+    try {
+      Promise.resolve(this.bgm.play()).catch(() => {}).finally(() => {
+        this.bgmPending = false;
+        if (!this.ready) this.bgm.pause();
+        const retry = this.bgmRetry;
+        this.bgmRetry = false;
+        if (retry && this.ready) this.playBgm();
+      });
+    } catch (_) { this.bgmPending = false; }
   }
-
-  setBackgroundPaused(paused) {
-    this.backgroundPaused = paused;
-    if (paused) this.bgm.pause();
+  pauseAll() {
+    this.bgm.pause();
+    for (const audio of Object.values(this.sfx)) {
+      audio.pause();
+      try { audio.currentTime = 0; } catch (_) {}
+    }
+    this.voices = [];
+  }
+  setBackgroundPaused(paused, source = 'app') {
+    if (paused) this.backgroundReasons.add(source);
+    else this.backgroundReasons.delete(source);
+    if (this.backgroundPaused) this.pauseAll();
     else this.playBgm();
   }
-
-  get ready() {
-    return this.enabled && this.ctx && this.ctx.state === 'running';
-  }
-
-  /* ---- 低レベルヘルパー ---- */
-
-  /** 単音を鳴らす。f1 を指定すると周波数スイープ */
-  _tone({ type = 'sine', f0 = 440, f1 = null, dur = 0.15, vol = 0.6, delay = 0 }) {
+  playSfx(name) {
     if (!this.ready) return;
-    const t0 = this.ctx.currentTime + delay;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(f0, t0);
-    if (f1 !== null) osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
-    gain.gain.setValueAtTime(vol, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(gain).connect(this.master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
+    const audio = this.sfx[name];
+    if (!audio) return;
+    this.voices = this.voices.filter(item => item !== audio && !item.paused && !item.ended);
+    while (this.voices.length >= 3) this.voices.shift().pause();
+    audio.pause();
+    try {
+      audio.currentTime = 0;
+      const promise = audio.play();
+      if (promise) promise.then(() => { if (!this.ready) audio.pause(); }, () => {});
+      this.voices.push(audio);
+    } catch (_) { /* Retry blocked playback on a later user gesture. */ }
   }
-
-  /** ノイズを鳴らす(バンドパスで音色調整) */
-  _noise({ dur = 0.2, vol = 0.3, freq = 1200, q = 1, delay = 0, sweepTo = null }) {
-    if (!this.ready) return;
-    if (!this._noiseBuf) {
-      // 0.5秒分のホワイトノイズを使い回す
-      const len = Math.floor(this.ctx.sampleRate * 0.5);
-      this._noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-      const data = this._noiseBuf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
-    }
-    const t0 = this.ctx.currentTime + delay;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this._noiseBuf;
-    src.loop = true;
-    const filter = this.ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(freq, t0);
-    if (sweepTo) filter.frequency.exponentialRampToValueAtTime(sweepTo, t0 + dur);
-    filter.Q.value = q;
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(vol, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    src.connect(filter).connect(gain).connect(this.master);
-    src.start(t0);
-    src.stop(t0 + dur + 0.02);
-  }
-
-  /* ---- ゲーム用効果音 ---- */
-
-  /** 吸い込み成功(Pop音)。combo が上がるほどピッチも上がる */
   pop(combo = 1) {
-    const pitch = 380 * Math.pow(1.06, Math.min(combo, 14));
-    this._tone({ type: 'triangle', f0: pitch, f1: pitch * 1.6, dur: 0.12, vol: 0.55 });
-    this._noise({ dur: 0.06, vol: 0.18, freq: 2500 });
+    // One pickup voice, including across pitch variants.
+    for (const [name, audio] of Object.entries(this.sfx)) if (name.startsWith('pop-')) audio.pause();
+    this.playSfx('pop-' + Math.max(1, Math.min(14, Math.floor(combo))));
   }
-
-  /** 成長(サイズの整数値が上がった時) */
-  grow() {
-    this._tone({ type: 'sine', f0: 523, dur: 0.12, vol: 0.4 });
-    this._tone({ type: 'sine', f0: 659, dur: 0.12, vol: 0.4, delay: 0.07 });
-    this._tone({ type: 'sine', f0: 784, dur: 0.2, vol: 0.45, delay: 0.14 });
-  }
-
-  /** ボタン押下 */
-  button() {
-    this._tone({ type: 'square', f0: 620, f1: 880, dur: 0.07, vol: 0.25 });
-  }
-
-  /** サイズ不足で押し返した時の鈍い音 */
-  thud() {
-    this._tone({ type: 'sine', f0: 150, f1: 70, dur: 0.1, vol: 0.3 });
-  }
-
-  /** バキュームモード発動 */
-  vacuum() {
-    this._noise({ dur: 0.7, vol: 0.35, freq: 400, sweepTo: 3000, q: 2 });
-    this._tone({ type: 'sawtooth', f0: 180, f1: 720, dur: 0.55, vol: 0.22 });
-  }
-
-  /** タイムアップ */
-  timeup() {
-    this._tone({ type: 'triangle', f0: 660, dur: 0.2, vol: 0.5 });
-    this._tone({ type: 'triangle', f0: 520, dur: 0.2, vol: 0.5, delay: 0.22 });
-    this._tone({ type: 'triangle', f0: 392, dur: 0.42, vol: 0.55, delay: 0.44 });
-  }
+  grow() { this.playSfx('grow'); }
+  button() { this.playSfx('button'); }
+  thud() { this.playSfx('thud'); }
+  vacuum() { this.playSfx('vacuum'); }
+  timeup() { this.playSfx('timeup'); }
 }

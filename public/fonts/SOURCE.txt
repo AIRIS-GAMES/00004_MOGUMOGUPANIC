@@ -1,0 +1,5 @@
+M PLUS Rounded 1c, Regular (400) and Black (900).
+Original, unmodified TTF files from Google Fonts:
+https://github.com/google/fonts/tree/main/ofl/mplusrounded1c
+Copyright and OFL 1.1 declaration verified in each font's embedded name table.
+OFL.txt contains the standard SIL OFL 1.1 text with the embedded font copyright notice.

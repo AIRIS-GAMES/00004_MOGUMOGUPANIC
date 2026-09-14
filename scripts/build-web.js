@@ -14,15 +14,30 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const OUT = path.join(ROOT, 'www');
+// Tests may only target a freshly allocated temporary directory, never www.
+const OUT = process.argv.includes('--test-build')
+  ? fs.mkdtempSync(path.join(require('os').tmpdir(), 'mogu-build-test-'))
+  : path.join(ROOT, 'www');
+const collaboration = require('../collaborations/ohsun.config.js');
+const preview = process.argv.includes('--collab-preview');
+const startsAt = Date.parse(collaboration.startsAt);
+const endsAt = Date.parse(collaboration.endsAt);
+const scheduled = Number.isFinite(startsAt) && Number.isFinite(endsAt) && startsAt < endsAt;
+if (collaboration.enabled && !preview &&
+    (collaboration.startsAt !== null || collaboration.endsAt !== null) && !scheduled) {
+  throw new Error('コラボ開始・終了日時を正しく指定してください。');
+}
+const includeCollaboration = collaboration.enabled && (preview || (scheduled && Date.now() < endsAt));
 
 /** コピー対象。ファイル or ディレクトリ(glob不要の単純指定) */
 const FILES = ['index.html', 'style.css', 'main.js'];
 const DIRS = [
+  { from: 'public/fonts', to: 'public/fonts', match: /\.(ttf|txt)$/i },
+  { from: 'public/audio', to: 'public/audio', match: /\.wav$/i },
   { from: 'js', to: 'js', match: /\.js$/ },
   { from: 'public/opt', to: 'public/opt', match: /\.(webp|png|jpg)$/i },
 ];
-// public 直下で個別に必要なもの(BGM・クロスプロモ画像)
+// public 直下で個別に必要なBGM
 const PUBLIC_FILES = ['Neon Arcade.mp3', 'star-match-icon.jpg'];
 
 function rimraf(target) {
@@ -49,6 +64,17 @@ function main() {
     const src = path.join(ROOT, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(OUT, f));
   }
+  const htmlPath = path.join(OUT, 'index.html');
+  let html = fs.readFileSync(htmlPath, 'utf8');
+  if (!includeCollaboration) {
+    html = html.replace(/<!-- OHSUN_COLLAB_START -->[\s\S]*?<!-- OHSUN_COLLAB_END -->\s*/g, '');
+  } else {
+    copyDir('collaborations', 'collaborations', /^ohsun\.(config\.js|js|css)$/);
+    // 原本PNGをバイト列のままコピー。source/review/READMEは配布しない。
+    copyDir('public/collaborations/ohsun/characters', 'public/collaborations/ohsun/characters', /^ohsun_(07|08|09|10|11|12|13)\.png$/);
+    if (preview) html = html.replace('<script src="collaborations/ohsun.js">', '<script>window.OHSUN_COLLAB_PREVIEW = true;</script>\n<script src="collaborations/ohsun.js">');
+  }
+  fs.writeFileSync(htmlPath, html);
   for (const d of DIRS) copyDir(d.from, d.to, d.match);
 
   fs.mkdirSync(path.join(OUT, 'public'), { recursive: true });
@@ -66,7 +92,9 @@ function main() {
       else count++;
     }
   })(OUT);
-  console.log(`www/ を生成しました (${count} ファイル)`);
+  console.log(`${OUT} を生成しました (${count} ファイル)`);
+  console.log(includeCollaboration ? (preview ? 'コラボ確認用：一般公開しないでください。' : 'コラボ期間設定を含むビルド') : '通常版：コラボ素材・専用コードは含まれません。');
 }
 
 main();
+module.exports = { out: OUT };

@@ -3,6 +3,21 @@
    モバイル最優先 / セーフエリア対応 / タップしやすい大きめUI
    ========================================================= */
 
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  src: url("public/fonts/MPLUSRounded1c-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "M PLUS Rounded 1c";
+  src: url("public/fonts/MPLUSRounded1c-Black.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+}
+
 :root {
   --c-sky: #7ec8e3;
   --c-panel: rgba(255, 255, 255, 0.92);
@@ -200,45 +215,6 @@ html, body {
   gap: 14px;
   padding-bottom: 4vh;
 }
-.cross-promo {
-  width: min(340px, 90vw);
-  min-height: 72px;
-  display: grid;
-  grid-template-columns: 58px 1fr 20px;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border: 2px solid rgba(255,255,255,0.9);
-  border-radius: 8px;
-  background: rgba(35, 39, 53, 0.9);
-  color: #fff;
-  text-decoration: none;
-  text-align: left;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.2), 0 8px 18px rgba(0,0,0,0.15);
-}
-.cross-promo:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
-.cross-promo img {
-  width: 58px;
-  height: 58px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-.cross-promo > span:not(.cross-promo-arrow) {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.cross-promo small { font-size: 10px; color: #d8dbe8; }
-.cross-promo strong {
-  overflow: hidden;
-  font-size: 14px;
-  line-height: 1.2;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.cross-promo b { font-size: 11px; color: #ffd24d; }
-.cross-promo-arrow { font-size: 32px; line-height: 1; color: #fff; }
 .coin-balance {
   position: absolute;
   top: calc(14px + var(--safe-top));
@@ -701,25 +677,64 @@ html, body {
 }
 
 /* 横向きスマホなど低い画面向けの調整 */
+.cross-promo {
+  width: min(340px, 90vw);
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 58px 1fr 20px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 2px solid rgba(255,255,255,0.9);
+  border-radius: 8px;
+  background: rgba(35, 39, 53, 0.9);
+  color: #fff;
+  text-decoration: none;
+  text-align: left;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.2), 0 8px 18px rgba(0,0,0,0.15);
+}
+.cross-promo:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+.cross-promo img {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+.cross-promo > span:not(.cross-promo-arrow) {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cross-promo small { font-size: 10px; color: #d8dbe8; }
+.cross-promo strong {
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cross-promo b { font-size: 11px; color: #ffd24d; }
+.cross-promo-arrow { font-size: 32px; line-height: 1; color: #fff; }
 @media (max-height: 480px) {
+  .cross-promo { min-height: 52px; grid-template-columns: 42px 1fr 16px; padding: 5px 8px; }
+  .cross-promo img { width: 42px; height: 42px; }
+  .cross-promo small { display: none; }
   .game-title { font-size: 40px; }
   .menu { gap: 8px; }
   .btn { min-height: 46px; padding: 8px 20px; }
   #skin-grid { grid-template-columns: repeat(5, minmax(96px, 1fr)); max-height: 52vh; }
   .skin-card > .skin-image { width: 56px; height: 56px; }
   .skin-card { min-height: 158px; }
-  .cross-promo { min-height: 52px; grid-template-columns: 42px 1fr 16px; padding: 5px 8px; }
-  .cross-promo img { width: 42px; height: 42px; }
-  .cross-promo small { display: none; }
 }
 
 @media (max-height: 700px) and (orientation: portrait) {
+  .cross-promo { min-height: 60px; grid-template-columns: 48px 1fr 18px; }
+  .cross-promo img { width: 48px; height: 48px; }
   #screen-title { padding-top: calc(5vh + var(--safe-top)); }
   .game-title { font-size: 44px; }
   .menu { gap: 8px; padding-bottom: 1vh; }
   .menu .btn { min-height: 48px; padding: 9px 20px; }
-  .cross-promo { min-height: 60px; grid-template-columns: 48px 1fr 18px; }
-  .cross-promo img { width: 48px; height: 48px; }
 }
 
 /* ===== Privacy banner ===== */

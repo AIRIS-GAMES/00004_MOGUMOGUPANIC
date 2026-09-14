@@ -18,6 +18,7 @@ class Spawner {
     // リスポーン待ちタイマー [{t}] : t秒後に1体スポーン
     this.respawnQueue = [];
     this.types = OBJECT_TYPES;
+    this.eventPool = [];
   }
 
   setTypes(typeIds) {
@@ -27,6 +28,7 @@ class Spawner {
 
   /** ゲーム開始時の初期配置 */
   populate(centerX, centerY, clearRadius = 320) {
+    this.eventPool = [];
     this.respawnQueue.length = 0;
     for (const obj of this.pool) {
       const type = this._chooseType(1);
@@ -50,11 +52,15 @@ class Spawner {
   kill(obj) {
     obj.active = false;
     obj.state = 'idle';
+    if (obj.eventOnly) return;
     this.respawnQueue.push({ t: 1 + Math.random() * 2.5 });
   }
 
   forEachActive(cb) {
     for (const obj of this.pool) {
+      if (obj.active) cb(obj);
+    }
+    for (const obj of this.eventPool) {
       if (obj.active) cb(obj);
     }
   }
