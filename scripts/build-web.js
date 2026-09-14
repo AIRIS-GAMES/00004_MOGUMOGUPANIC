@@ -27,7 +27,7 @@ if (collaboration.enabled && !preview &&
     (collaboration.startsAt !== null || collaboration.endsAt !== null) && !scheduled) {
   throw new Error('コラボ開始・終了日時を正しく指定してください。');
 }
-const includeCollaboration = collaboration.enabled && (preview || (scheduled && Date.now() < endsAt));
+const includeCollaboration = collaboration.enabled && (collaboration.manual === true || preview || (scheduled && Date.now() < endsAt));
 
 /** コピー対象。ファイル or ディレクトリ(glob不要の単純指定) */
 const FILES = ['index.html', 'style.css', 'main.js'];
@@ -93,7 +93,7 @@ function main() {
     }
   })(OUT);
   console.log(`${OUT} を生成しました (${count} ファイル)`);
-  console.log(includeCollaboration ? (preview ? 'コラボ確認用：一般公開しないでください。' : 'コラボ期間設定を含むビルド') : '通常版：コラボ素材・専用コードは含まれません。');
+  console.log(includeCollaboration ? (preview ? 'コラボ確認用：一般公開しないでください。' : collaboration.manual ? 'コラボ有効版：手動終了まで有効。' : 'コラボ期間設定を含むビルド') : '通常版：コラボ素材・専用コードは含まれません。');
 }
 
 main();

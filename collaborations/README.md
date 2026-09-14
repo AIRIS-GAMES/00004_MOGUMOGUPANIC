@@ -59,13 +59,14 @@ URLのプレビュー指定はlocalhost系ホストのみ受け付ける。
 
 ## 開催・終了
 
-ohsun.config.jsで OHSUN_COLLAB_ENABLED=true と開催日時を設定する。
-startsAt/endsAtは `YYYY-MM-DDTHH:mm:ss+09:00` 形式。日時未設定なら通常ビルドにコラボを含めない。
+現在はohsun.config.jsの OHSUN_COLLAB_ENABLED=true、manual=true により、手動終了までコラボを有効にする。
+別PCでも `npm ci` → `npm run sync:ios` でコラボが反映される。特別なプレビュー指定は不要。
+自動期間管理へ変更する場合はmanual=falseにし、startsAt/endsAtを `YYYY-MM-DDTHH:mm:ss+09:00` 形式で設定する。manual=falseかつ日時未設定なら通常ビルドにコラボを含めない。
 開催版：`npm run build:web`。iOSへの同期：`npm run sync:ios`。
 終了日時は含まない。期限切れではイベントの効果と画像を解除し、通常プレイをそのまま継続する。
 端末時計による判定であり、旧インストール内の素材を遠隔削除するものではない。
 
-終了版：OHSUN_COLLAB_ENABLED=false にして `npm run build:web`。
+終了版：OHSUN_COLLAB_ENABLED=false にして `npm run sync:ios:normal`（Webのみなら `npm run build:web`）。manual=trueでもenabled=falseが優先され、素材も配布から外れる。
 www/collaborations と www/public/collaborations がないことを確認し、www/の内容で置換配信する。
 Webの前回配信ファイルも残さない。iOSは同期・終了版配信を行う。
 終了版では素材と専用コード/CSSを配布しない。source/reviewはどのビルドにも含めない。

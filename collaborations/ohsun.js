@@ -5,7 +5,7 @@
   const local = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
   const preview = Boolean(window.OHSUN_COLLAB_PREVIEW) || (local && new URLSearchParams(location.search).get('ohsun-preview') === '1');
   const start = Date.parse(config?.startsAt), end = Date.parse(config?.endsAt);
-  const available = () => Boolean(config?.enabled && (preview || (Number.isFinite(start) && Number.isFinite(end) && start < end && Date.now() >= start && Date.now() < end)));
+  const available = () => Boolean(config?.enabled && (config.manual === true || preview || (Number.isFinite(start) && Number.isFinite(end) && start < end && Date.now() >= start && Date.now() < end)));
   class OhSunCollaboration {
     constructor(game) {
       this.game = game;

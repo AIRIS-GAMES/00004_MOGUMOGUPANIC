@@ -226,9 +226,11 @@ const server = http.createServer((req, res) => {
     assert.equal(await page.evaluate(() => __game.player.sunRangeMul), 1);
     assert.equal(await page.locator('.sun-guest img[src]').count(), 0);
     await page.unroute('**/collaborations/ohsun.config.js');
+    await page.route('**/collaborations/ohsun.config.js', route => route.fulfill({ contentType: 'text/javascript', body: 'window.OHSUN_COLLAB_CONFIG={enabled:false,manual:true};' }));
     await run(base);
     assert.equal(await page.locator('.sun-hud').isVisible(), false);
     assert.equal(await page.locator('.sun-collab-banner').isVisible(), false);
+    await page.unroute('**/collaborations/ohsun.config.js');
     await run(base + '/www/');
     assert.equal(await page.locator('.sun-hud').count(), 0);
     assert.equal(await page.evaluate(() => __game.player.moveSpeed), baseline.speed);

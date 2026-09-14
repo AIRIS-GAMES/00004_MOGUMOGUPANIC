@@ -37,6 +37,11 @@ function normal() {
   assert.equal(fs.readFileSync(path.join(output, 'index.html'), 'utf8').includes('ohsun'), false);
 }
 try {
+  build({ enabled: true, manual: true, startsAt: null, endsAt: null });
+  assert.ok(fs.existsSync(path.join(output, 'collaborations/ohsun.js')));
+  assert.ok(!fs.readFileSync(path.join(output, 'index.html'), 'utf8').includes('OHSUN_COLLAB_PREVIEW'));
+  build({ enabled: false, manual: true, startsAt: null, endsAt: null });
+  normal();
   build({ enabled: true, startsAt: null, endsAt: null }, true);
   for (let i = 7; i <= 13; i++) {
     const file = `public/collaborations/ohsun/characters/ohsun_${String(i).padStart(2, '0')}.png`;
