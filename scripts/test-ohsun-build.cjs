@@ -43,11 +43,12 @@ try {
   build({ enabled: false, manual: true, startsAt: null, endsAt: null });
   normal();
   build({ enabled: true, startsAt: null, endsAt: null }, true);
-  for (let i = 7; i <= 13; i++) {
-    const file = `public/collaborations/ohsun/characters/ohsun_${String(i).padStart(2, '0')}.png`;
+  for (const name of ['ohsun_09.png']) {
+    const file = `public/collaborations/ohsun/characters/${name}`;
     assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(output, file))), 'Original bytes preserved');
   }
   assert.deepEqual(fs.readdirSync(path.join(output, 'public/collaborations/ohsun')), ['characters']);
+  assert.deepEqual(fs.readdirSync(path.join(output, 'public/collaborations/ohsun/characters')), ['ohsun_09.png'], 'Only the referenced character image is shipped');
   build({ enabled: false, startsAt: null, endsAt: null }, true);
   normal();
   build({ enabled: true, startsAt: '2020-01-01T00:00:00+09:00', endsAt: '2020-02-01T00:00:00+09:00' });

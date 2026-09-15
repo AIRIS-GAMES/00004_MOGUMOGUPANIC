@@ -54,4 +54,13 @@ render('button', .09, [['square', 620, 880, .07, .25]]);
 render('thud', .12, [['sine', 150, 70, .1, .3]]);
 render('vacuum', .72, [['sawtooth', 180, 720, .55, .22]], [[.7, .35, 400, 3000, 2]]);
 render('timeup', .88, [['triangle', 660, 660, .2, .5], ['triangle', 520, 520, .2, .5, .22], ['triangle', 392, 392, .42, .55, .44]]);
-console.log('Generated 19 mono PCM WAV files, 44.1 kHz / 16 bit, peak <= 0.32.');
+// Bright ascending C-major chimes, resolving into a high major chord.
+render('clear', 1.5, [
+  ['triangle', 523.25, 523.25, .28, .3],
+  ['triangle', 659.25, 659.25, .28, .3, .12],
+  ['triangle', 783.99, 783.99, .3, .3, .24],
+  ['sine', 1046.5, 1046.5, 1.05, .4, .4],
+  ['sine', 1318.51, 1318.51, .95, .22, .4],
+  ['sine', 1567.98, 1567.98, .85, .18, .4],
+]);
+console.log('Generated 20 mono PCM WAV files, 44.1 kHz / 16 bit, peak <= 0.32.');

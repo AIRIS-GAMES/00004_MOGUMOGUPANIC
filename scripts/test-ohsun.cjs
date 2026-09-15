@@ -94,7 +94,7 @@ const server = http.createServer((req, res) => {
       for (let i = 0; i < 10; i++) e.spawnSun();
       return { coinCharge, liveSuns: g.spawner.eventPool.filter(o => o.active && o.sunCharge).length };
     });
-    assert.deepEqual(rareCheck, { coinCharge: 0, liveSuns: 2 });
+    assert.deepEqual(rareCheck, { coinCharge: 0, liveSuns: 3 });
     const recycled = await page.evaluate(() => {
       const g = __game, e = g.collaboration;
       const suns = g.spawner.eventPool.filter(o => o.sunCharge && o.active);
@@ -104,11 +104,11 @@ const server = http.createServer((req, res) => {
       const view = g.camera.viewBounds(g.w, g.h, 0);
       const visible = o => o.x >= view.l && o.x <= view.r && o.y >= view.t && o.y <= view.b;
       const first = suns.filter(visible).length;
-      e.update(4);
+      e.update(2);
       return { first, second: suns.filter(visible).length, total: suns.filter(o => o.active).length,
         separated: Math.hypot(suns[0].x - suns[1].x, suns[0].y - suns[1].y) * g.camera.zoom > 70 };
     });
-    assert.deepEqual(recycled, { first: 1, second: 2, total: 2, separated: true });
+    assert.deepEqual(recycled, { first: 1, second: 2, total: 3, separated: true });
     await collect(4);
     assert.equal(await page.evaluate(() => __game.collaboration.state), 'normal');
     assert.equal(await page.evaluate(() => __game.collaboration.count), 4);
@@ -237,6 +237,9 @@ const server = http.createServer((req, res) => {
     // Immediate target clear, timing records and idempotent rewards.
     await page.evaluate(() => {
       const g = __game;
+      g.clearSoundCalls = 0;
+      g.audio.clear = () => { g.clearSoundCalls++; };
+      g.audio.timeup = () => { throw Error('Failure sound on clear'); };
       g.currentStageId = 1;
       g.timeLeft = g.runTimeLimit - 12.5;
       g.comboCount = 0;
@@ -245,11 +248,32 @@ const server = http.createServer((req, res) => {
       g._consume(coin);
     });
     assert.equal(await page.evaluate(() => __game.state), 'result');
+    assert.equal(await page.evaluate(() => __game.clearSoundCalls), 1);
+    assert.equal(await page.locator('.result-coins img').count(), 24);
+    assert.equal(await page.evaluate(() => {
+      const layer = document.querySelector('.result-coins');
+      const { width, height } = layer.getBoundingClientRect();
+      return [...layer.children].every(coin => {
+        const x = width / 2 + parseFloat(coin.style.getPropertyValue('--coin-x'));
+        const y = height * .42 + coin.offsetHeight / 2 + parseFloat(coin.style.getPropertyValue('--coin-y'));
+        return x < -30 || x > width + 30 || y < -30 || y > height + 30;
+      });
+    }), true, 'Every coin flies beyond a screen edge');
+    await page.waitForTimeout(220);
+    await page.screenshot({ path: path.join(output, 'clear-coin-burst.png') });
     assert.equal(await page.locator('#res-clear-time').textContent(), '12.50s');
     assert.equal(await page.evaluate(() => Storage.getClearTime(1)), 12.5);
     const coins = await page.evaluate(() => Storage.getCoins());
     await page.evaluate(() => __game.endGame());
     assert.equal(await page.evaluate(() => Storage.getCoins()), coins);
+    assert.equal(await page.evaluate(() => __game.clearSoundCalls), 1);
+    await page.waitForFunction(() => !document.querySelector('.result-coins'));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.evaluate(() => __game.ui.showClearCoins());
+    assert.equal(await page.locator('.result-coins').count(), 0);
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.evaluate(() => { __game.ui.showClearCoins(); __game.showTitle(); });
+    assert.equal(await page.locator('.result-coins').count(), 0, 'Leaving results removes coins');
 
     await run(base + '/?ohsun-preview=1');
     await collect(5);
@@ -257,35 +281,77 @@ const server = http.createServer((req, res) => {
     await page.evaluate(() => {
       const g = __game;
       g.currentStageId = 1;
-      g.timeLeft = g.runTimeLimit - 10;
-      g.score = Game.STAGES[0].targetScore;
+      g.timeLeft = g.runTimeLimit - 30;
+      g.score = g.getStage(1, true).targetScore;
       g._checkTarget();
     });
     assert.equal(await page.evaluate(() => __game.state), 'play');
-    assert.equal(await page.evaluate(() => __game.clearTime), 10);
+    assert.equal(await page.evaluate(() => __game.clearTime), 30);
     await page.evaluate(() => { __game.collaboration.remaining = .01; });
     await page.waitForFunction(() => __game.state === 'result');
-    assert.equal(await page.locator('#res-clear-time').textContent(), '10.00s');
+    assert.equal(await page.locator('#res-clear-time').textContent(), '30.00s');
     await page.screenshot({ path: path.join(output, 'clear-result-landscape.png') });
-    assert.equal(await page.evaluate(() => Storage.getClearTime(1, true)), 10);
+    assert.equal(await page.evaluate(() => Storage.getClearTime(1, true)), 30);
     assert.equal(await page.evaluate(() => Storage.getClearTime(1)), 12.5);
 
-    // Timeout takes precedence even when a confirmed clear is waiting on SUN BONUS.
+    // First-stage assist works without collecting tokens, but only once per run.
+    await run(base + '/?ohsun-preview=1');
+    assert.equal(await page.evaluate(() => __game.spawner.eventPool.filter(o => o.active && o.sunCharge).length), 2);
+    const assist = await page.evaluate(() => {
+      const g = __game, e = g.collaboration;
+      e.runElapsed = 19.9;
+      g.state = 'pause';
+      e.update(.2);
+      const paused = e.state;
+      g.state = 'play';
+      e.update(.2);
+      const triggered = e.state;
+      e.update(.7);
+      e.update(8.1);
+      e.update(1.1);
+      e.update(.1);
+      return { paused, triggered, state: e.state, started: e.startedBonuses, completed: e.completedBonuses };
+    });
+    assert.deepEqual(assist, { paused: 'normal', triggered: 'sunBonusEntering', state: 'normal', started: 1, completed: 1 });
+    await run(base + '/?ohsun-preview=1');
+    await page.evaluate(() => {
+      const g = __game;
+      g.currentStageId = 1;
+      g.timeLeft = g.runTimeLimit - 3;
+      g.score = g.getStage(1, true).targetScore;
+      g._checkTarget();
+    });
+    assert.equal(await page.evaluate(() => __game.collaboration.startedBonuses), 1);
+    assert.equal(await page.evaluate(() => __game.state), 'play');
+    assert.equal(await page.evaluate(() => __game.clearTime), 3);
+    await page.waitForFunction(() => __game.collaboration.state === 'sunBonusActive');
+    await page.evaluate(() => { __game.collaboration.remaining = .01; });
+    await page.waitForFunction(() => __game.state === 'result');
+    assert.equal(await page.locator('#res-clear-time').textContent(), '3.00s', 'No minimum-time gate after bonus finishes');
+
+    // Timeout waits for the current bonus to finish.
     await run(base + '/?ohsun-preview=1');
     await collect(5);
     await page.waitForFunction(() => __game.collaboration.state === 'sunBonusActive');
     await page.evaluate(() => {
       const g = __game;
       g.currentStageId = 1;
-      g.score = Game.STAGES[0].targetScore;
+      g.score = g.getStage(1, true).targetScore;
       g._checkTarget();
       g.timeLeft = .01;
       g._updatePlay(.02);
     });
+    assert.equal(await page.evaluate(() => __game.state), 'play');
+    await page.evaluate(() => { __game.collaboration.remaining = .01; });
+    await page.waitForFunction(() => __game.state === 'result');
     assert.equal(await page.locator('#res-title').textContent(), 'STAGE CLEAR!');
     await run(base);
-    await page.evaluate(() => { __game.score = 0; __game.timeLeft = .01; __game._updatePlay(.02); });
+    await page.evaluate(() => {
+      __game.audio.clear = () => { throw Error('Success sound on failure'); };
+      __game.score = 0; __game.timeLeft = .01; __game._updatePlay(.02);
+    });
     assert.equal(await page.locator('#res-title').textContent(), 'TRY AGAIN');
+    assert.equal(await page.locator('.result-coins').count(), 0);
     assert.equal(await page.locator('#res-clear-time').textContent(), '—');
     assert.deepEqual(errors, []);
     console.log('PASS: SUN lifecycle, scoring, pause, expiry, image failure, target clear, bonus grace, timeout, clear-time records and reward idempotency.');

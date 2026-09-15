@@ -478,7 +478,7 @@ class Game {
     this._leaveTitle();
     this.state = 'stage';
     this.ui.buildStageGrid(
-      Game.STAGES,
+      Game.STAGES.map(stage => this.collaboration?.stageConfig(stage) || stage),
       Math.min(Storage.getUnlockedStage(), Game.STAGES.length),
       Storage.getClearedStages(),
       (stageId) => { this._btn(); this.openBoosts(stageId, 'stage'); }
@@ -549,7 +549,7 @@ class Game {
 
   openBoosts(stageId, backTarget) {
     this._leaveTitle();
-    const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
+    const stage = this.getStage(stageId);
     this.pendingStageId = stage.id;
     this.boostBackTarget = backTarget;
     this.state = 'boost';
@@ -576,7 +576,7 @@ class Game {
 
   startGame(stageId = this.currentStageId, boostIds = []) {
     this._resetInput();
-    const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
+    const stage = this.getStage(stageId);
     this.currentStageId = stage.id;
     const skinId = Storage.getSkin();
     const skin = SKINS.find(s => s.id === skinId) || SKINS[0];
@@ -634,11 +634,10 @@ class Game {
     this._resetInput();
     this.state = 'result';
     this.input.active = false;
-    this.audio.timeup();
 
     this.collaboration?.leave();
 
-    const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+    const stage = this.getStage(this.currentStageId, this.sunRecord);
 
     // Preserve score history; the record badge now celebrates faster clears.
     const prevStageBest = Storage.getStageBest(stage.id, this.sunRecord);
@@ -648,6 +647,8 @@ class Game {
     if (this.score > Storage.getBest(this.sunRecord)) Storage.setBest(this.score, this.sunRecord);
 
     const cleared = this.score >= stage.targetScore;
+    if (cleared) this.audio.clear();
+    else this.audio.timeup();
     const previousTime = Storage.getClearTime(stage.id, this.sunRecord);
     if (cleared && this.clearTime == null) this.clearTime = Math.max(0, this.runTimeLimit - this.timeLeft);
     if (cleared && (previousTime === null || this.clearTime < previousTime)) {
@@ -728,8 +729,8 @@ class Game {
   _updatePlay(dt, elapsed = dt) {
     const player = this.player;
     this.timeLeft = Math.max(0, this.timeLeft - elapsed);
-    if (this.timeLeft <= 0) {
-      const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+    if (this.timeLeft <= 0 && !this.collaboration?.isRunning) {
+      const stage = this.getStage(this.currentStageId, this.sunRecord);
       this.ui.updateHUD(this.score, player.scale, 0, stage.targetScore);
       this.endGame();
       return;
@@ -761,17 +762,24 @@ class Game {
     this.camera.update(dt);
 
     // 制限時間
-    const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+    const stage = this.getStage(this.currentStageId, this.sunRecord);
     this.ui.updateHUD(this.score, player.scale, this.timeLeft, stage.targetScore);
-    if (this.timeLeft <= 0) this.endGame();
+    if (this.timeLeft <= 0 && !this.collaboration?.isRunning) this.endGame();
   }
 
-  /** 吸い込み判定と吸引の進行 */
+  /** Resolve the displayed target and the run's collaboration target consistently. */
+  getStage(stageId, collaborationEnabled) {
+    const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
+    return this.collaboration?.stageConfig?.(stage, collaborationEnabled) || stage;
+  }
+
   _checkTarget() {
-    const stage = Game.STAGES.find(item => item.id === this.currentStageId) || Game.STAGES[0];
+    const stage = this.getStage(this.currentStageId, this.sunRecord);
     if (this.score < stage.targetScore) return false;
-    if (this.clearTime == null) this.clearTime = Math.max(0, this.runTimeLimit - this.timeLeft);
     const event = this.collaboration;
+    event?.ensureFirstBonus?.();
+    const played = Math.max(0, this.runTimeLimit - this.timeLeft);
+    if (this.clearTime == null) this.clearTime = played;
     const bonusRunning = event?.enabled && ['sunBonusEntering', 'sunBonusActive', 'sunBonusEnding'].includes(event.state);
     if (bonusRunning) return false;
     this.ui.updateHUD(this.score, this.player.scale, this.timeLeft, stage.targetScore);

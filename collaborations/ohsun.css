@@ -29,7 +29,7 @@
 .sun-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .sun-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 90% 30%, #ffe07355, transparent 65%); }
 .sun-layer.is-entering .sun-light { background: radial-gradient(ellipse at 90% 30%, #fff8c080, #fff7d020 75%); }
-.sun-guest { position: absolute; margin: 0; text-align: center; }
+.sun-guest { position: absolute; left: 0; top: 0; margin: 0; text-align: center; will-change: transform; }
 .sun-guest img { display: block; width: 100%; height: auto; }
 .sun-guest figcaption { color: #554320; font: 400 11px/18px var(--font); }
 .sun-announcement { position: absolute; top: calc(119px + var(--safe-top)); left: 12px; right: 12px; text-align: center; color: #98611b; font-size: clamp(20px, 5vw, 34px); font-weight: 900; text-shadow: 0 2px #fff7db; }

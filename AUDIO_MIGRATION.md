@@ -17,21 +17,23 @@ No native audio implementation needed removal; no native session configuration w
 | `Game._btn()` | button |
 | `Game._updateSuction()` | thud |
 | `Game._consume()` | pop, grow, vacuum |
-| `Game.endGame()` | timeup |
+| `Game.endGame()` | clear on success / timeup on failure |
 | `collaborations/ohsun.js` SUN entry | grow |
 | Game sound button | setEnabled, existing `mogu.sound` persistence |
 
 ## Files / levels
 
 - `js/Audio.js`: file-only player, one BGM instance, at most three SFX voices, one pickup voice across all pitches.
-- `public/audio/*.wav`: 14 pickup pitches and five other SFX. 44.1 kHz, mono, 16-bit PCM, normalized peak 0.32 (-9.9 dBFS).
+- `public/audio/*.wav`: 14 pickup pitches and six other SFX. 44.1 kHz, mono, 16-bit PCM, normalized peak 0.32 (-9.9 dBFS).
 - `scripts/generate-sfx.cjs`: deterministic offline renderer retaining original pitches, envelopes, note sequences and noise sweeps; never shipped to the game. Regenerate with `node scripts/generate-sfx.cjs`.
 - `main.js`: audio-only lifecycle hooks; independent visibility/app/page suspension reasons prevent premature resume. Short SFX are discarded on suspension, BGM resumes from its position. Blocked playback retries on user gesture.
 - `scripts/build-web.js`: includes WAV assets; `scripts/preview-ohsun.cjs`: serves WAV assets locally.
 - `scripts/test-audio*.cjs`: audio-specific regression and real-media browser tests.
 - `package.json` and `scripts/normalize-ios-paths.cjs`: sync-after hook normalizes Capacitor's generated Windows path separators in the Swift package file; avoids invalid Swift escape sequences without manually maintaining generated output.
 
-BGM volume 0.20 (original MP3 retained); pop 0.70, button/thud 0.55, grow/timeup 0.70, vacuum 0.60.
+BGM volume 0.20 (original MP3 retained); pop 0.70, button/thud 0.55, grow/timeup/clear 0.70, vacuum 0.60.
+Successful results use a 1.5-second ascending C-major chime (`clear.wav`). Pending pickup playback and current SFX are stopped before the fanfare; BGM continues. Failure retains the descending timeup sound. Both respect the existing SOUND setting.
+Pickup performance: coalesce each animation frame to its latest combo pitch, with an 80 ms minimum interval. Stop only the previous active pickup voice; OFF does no pickup media work. Background/OFF cancels queued pickup callbacks, so no backlog plays on return. Scores and combo counting are unaffected.
 Audibility adjustment: pickup peak is approximately 6.3 dB higher than the initial migration. With these media volumes applied, the worst-case absolute peak sum is 0.20 + 3 × 0.32 × 0.70 = 0.872; retain the three-voice cap. Actual device/recording output remains subject to device verification.
 File attenuation and bounded concurrency provide additional SFX headroom, beyond media-element volume settings. Final recording balance must still be verified on iPhone.
 The existing app has a single SOUND switch, not separate BGM/SFX switches. UI and `mogu.sound` semantics remain unchanged; no other saved data changes.

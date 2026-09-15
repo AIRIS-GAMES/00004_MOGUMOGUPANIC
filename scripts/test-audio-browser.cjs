@@ -55,6 +55,6 @@ const server = http.createServer((req, res) => {
       assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(root, 'www', file))));
       assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(root, 'ios/App/App/public', file))));
     }
-    console.log('PASS: Chromium BGM and all 19 WAV files play; 3 recording modes, pause/resume, OFF, source/www/iOS byte parity.');
+    console.log('PASS: Chromium BGM and all WAV files play; 3 recording modes, pause/resume, OFF, source/www/iOS byte parity.');
   } finally { await browser.close(); server.close(); }
 })().catch(error => { console.error(error); server.close(); process.exitCode = 1; });

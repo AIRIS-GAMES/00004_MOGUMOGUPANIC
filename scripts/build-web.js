@@ -71,7 +71,7 @@ function main() {
   } else {
     copyDir('collaborations', 'collaborations', /^ohsun\.(config\.js|js|css)$/);
     // 原本PNGをバイト列のままコピー。source/review/READMEは配布しない。
-    copyDir('public/collaborations/ohsun/characters', 'public/collaborations/ohsun/characters', /^ohsun_(07|08|09|10|11|12|13)\.png$/);
+    copyDir('public/collaborations/ohsun/characters', 'public/collaborations/ohsun/characters', /^ohsun_09\.png$/);
     if (preview) html = html.replace('<script src="collaborations/ohsun.js">', '<script>window.OHSUN_COLLAB_PREVIEW = true;</script>\n<script src="collaborations/ohsun.js">');
   }
   fs.writeFileSync(htmlPath, html);

@@ -48,7 +48,7 @@
         <figure class="sun-rules-character"><img alt="サンテレビ公式キャラクター おっ！サン"><figcaption>©SUN-TV</figcaption></figure>
         <ol>
           <li><strong>虹色の太陽を5個集める</strong><p>黄色い★コインとは別のアイテム！</p></li>
-          <li><strong>おっ！サンが登場！</strong><p>ボーナスアイテムがいっぱい！</p></li>
+          <li><strong>おっ！サンが登場！</strong><p>毎ステージ初回は自動お助けも！</p></li>
           <li><strong>8秒間のSUN BONUS！</strong><p>吸い込み範囲1.5倍・スコア2倍</p></li>
         </ol>
         <p class="sun-rules-note">おっ！サンは吸い込み対象ではありません。</p>
@@ -100,6 +100,9 @@
       if (!this.enabled) return;
       this.art.hidden = true;
       this.img.src = 'public/collaborations/ohsun/characters/ohsun_09.png';
+      this.spawnSun();
+      this.spawnSun();
+      this.sunSpawnTimer = 2;
       this.updateHUD();
     }
     leave() {
@@ -107,6 +110,8 @@
       this.state = 'normal';
       this.count = this.remaining = this.time = 0;
       this.completedBonuses = 0;
+      this.startedBonuses = 0;
+      this.runElapsed = 0;
       this.pendingStars = 0;
       this.sunSpawnTimer = 0;
       this.game.spawner.eventPool = [];
@@ -115,8 +120,30 @@
       this.layer.classList.add('hidden');
       this.img.removeAttribute('src');
     }
+    stageConfig(stage, enabled = available()) {
+      if (!enabled) return stage;
+      // Score-only pacing: no minimum-duration gate. See measure-sun-balance.cjs.
+      const targets = [20000, 22000, 23000, 24000, 25000, 26000, 27000, 28000, 29000, 30000];
+      return { ...stage, targetScore: targets[stage.id - 1] || stage.targetScore };
+    }
+    get isRunning() { return this.enabled && ['sunBonusEntering', 'sunBonusActive', 'sunBonusEnding'].includes(this.state); }
     get scoreMultiplier() { return this.enabled && this.state === 'sunBonusActive' ? 2 : 1; }
     get requiredStars() { return 5; }
+    beginBonus() {
+      if (!this.enabled || this.state !== 'normal') return;
+      this.startedBonuses++;
+      this.count = this.requiredStars;
+      this.state = 'sunBonusEntering';
+      this.time = 0;
+      this.remaining = 8;
+      this.game.camera.shake(3);
+      this.game.audio.grow();
+      this.announcement.textContent = 'SUN BONUS!';
+      this.updateHUD();
+    }
+    ensureFirstBonus() {
+      if (this.startedBonuses === 0) this.beginBonus();
+    }
     onConsume(obj) {
       if (!this.enabled || obj.type.id !== 'sunToken') return;
       this.game.particles.burst(obj.x, obj.y, '#ffd24d', { kind: 'spark', colors: ['#ffd24d', '#fff3aa'] });
@@ -127,23 +154,20 @@
       }
       this.count = Math.min(this.requiredStars, this.count + 1);
       if (this.count === this.requiredStars) {
-        this.state = 'sunBonusEntering';
-        this.time = 0;
-        this.remaining = 8;
-        this.game.camera.shake(3);
-        this.game.audio.grow();
-        this.announcement.textContent = 'SUN BONUS!';
+        this.beginBonus();
       }
       this.updateHUD();
     }
     update(dt, elapsed = dt) {
       if (!this.enabled || this.game.state !== 'play') return;
       this.time += elapsed;
+      this.runElapsed += elapsed;
+      if (this.runElapsed >= 20 || this.game.timeLeft <= 12) this.ensureFirstBonus();
       if (this.state === 'normal') {
         this.sunSpawnTimer -= elapsed;
         if (this.sunSpawnTimer <= 0) {
           this.spawnSun();
-          this.sunSpawnTimer = 4;
+          this.sunSpawnTimer = 2;
         }
       }
       if (this.state === 'sunBonusEntering' && this.time >= .65) {
@@ -166,7 +190,7 @@
         }
       } else if (this.state === 'sunBonusEnding' && this.time >= 1) {
         this.completedBonuses++;
-        this.sunSpawnTimer = 4;
+        this.sunSpawnTimer = 2;
         this.state = 'normal';
         this.count = this.pendingStars;
         this.pendingStars = this.time = 0;
@@ -193,12 +217,12 @@
       if (!this.enabled || this.state !== 'normal') return;
       const suns = game.spawner.eventPool.filter(obj => obj.sunCharge);
       const camera = game.camera;
-      const view = camera.viewBounds(game.w, game.h, 60);
+      const view = camera.viewBounds(game.w, game.h, 0);
       const outside = obj => obj.state === 'idle' &&
         (obj.x < view.l || obj.x > view.r || obj.y < view.t || obj.y > view.b);
       const active = suns.filter(obj => obj.active);
-      // Offscreen tokens must not permanently occupy both rare-item slots.
-      const obj = active.length >= 2 ? active.find(outside)
+      // Recycle offscreen tokens instead of exhausting the visible item slots.
+      const obj = active.length >= 3 ? active.find(outside)
         : suns.find(obj => !obj.active) || new GameObject();
       if (!obj) return;
       if (!suns.includes(obj)) game.spawner.eventPool.push(obj);
@@ -209,8 +233,11 @@
         const sy = 140 + Math.random() * Math.max(0, game.h - 210);
         const x = Math.max(40, Math.min(Game.WORLD - 40, camera.x + (sx - game.w / 2) / camera.zoom));
         const y = Math.max(40, Math.min(Game.WORLD - 40, camera.y + (sy - game.h / 2) / camera.zoom));
-        const separation = Math.min(Math.hypot(x - mouth.x, y - mouth.y) - mouth.r,
+        // Prefer a reachable ring around the mouth, not the farthest screen corner.
+        const spacing = Math.min(Infinity,
           ...active.filter(other => other !== obj).map(other => Math.hypot(x - other.x, y - other.y) - 70 / camera.zoom));
+        const separation = -Math.abs(Math.hypot(x - mouth.x, y - mouth.y) - mouth.r - 100 / camera.zoom)
+          + (spacing < 0 ? -10000 + spacing : 0);
         if (!best || separation > best.separation) best = { x, y, separation };
       }
       obj.reset(this.sunType, best.x, best.y);
@@ -272,7 +299,9 @@
       this.layer.classList.toggle('hidden', !visible);
       if (!visible) return;
       const pos = this.guestPosition();
-      Object.assign(this.art.style, { left: `${pos.x - pos.width / 2}px`, top: `${pos.y - pos.width * .58}px`, width: `${pos.width}px` });
+      const width = `${pos.width}px`;
+      if (this.art.style.width !== width) this.art.style.width = width;
+      this.art.style.transform = `translate3d(${pos.x - pos.width / 2}px, ${pos.y - pos.width * .58}px, 0)`;
       this.announcement.classList.toggle('hidden', this.state === 'sunBonusActive' && this.time > 1);
       this.layer.classList.toggle('is-entering', this.state === 'sunBonusEntering');
     }

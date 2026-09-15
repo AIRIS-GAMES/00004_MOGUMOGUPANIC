@@ -525,7 +525,16 @@ html, body {
   pointer-events: none;
 }
 #combo-pop.show { animation: combo-pop 0.7s ease forwards; }
+#combo-pop.show-alt { animation: combo-pop-alt 0.7s ease forwards; }
 @keyframes combo-pop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.4) rotate(-8deg); }
+  25% { opacity: 1; transform: translateX(-50%) scale(1.25) rotate(3deg); }
+  55% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translateX(-50%) scale(1.1) translateY(-24px); }
+}
+
+/* Same motion, separate name: restart without forcing synchronous layout. */
+@keyframes combo-pop-alt {
   0% { opacity: 0; transform: translateX(-50%) scale(0.4) rotate(-8deg); }
   25% { opacity: 1; transform: translateX(-50%) scale(1.25) rotate(3deg); }
   55% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
@@ -620,6 +629,30 @@ html, body {
   overflow-y: auto;
 }
 
+.result-coins {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+.result-coins img {
+  position: absolute;
+  left: calc(50% - 21px);
+  top: 42%;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  animation: clear-coin-burst 2s linear both;
+}
+@keyframes clear-coin-burst {
+  0% { opacity: 0; transform: translate(0, 0) scale(.4); }
+  12% { opacity: 1; }
+  100% { opacity: 1; transform: translate(var(--coin-x), var(--coin-y)) rotate(var(--coin-spin)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .result-coins { display: none; }
+}
 .result-list { width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .result-list > div {
   display: flex;

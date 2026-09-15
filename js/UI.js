@@ -107,6 +107,9 @@ class UI {
 
   /** 指定した画面だけ表示する(複数可) */
   showScreen(...names) {
+    this.clearCombo();
+    this.resultCoins?.remove();
+    this.resultCoins = null;
     for (const [name, elem] of Object.entries(this.screens)) {
       elem.classList.toggle('hidden', !names.includes(name));
     }
@@ -166,29 +169,52 @@ class UI {
   /* ---- HUD ---- */
 
   updateHUD(score, size, timeLeft, targetScore = 0) {
-    this.el.score.textContent = score.toLocaleString();
-    this.el.size.textContent = `×${size.toFixed(2)}`;
+    const scoreText = score.toLocaleString();
+    const sizeText = `×${size.toFixed(2)}`;
+    if (this.el.score.textContent !== scoreText) this.el.score.textContent = scoreText;
+    if (this.el.size.textContent !== sizeText) this.el.size.textContent = sizeText;
     const t = Math.max(0, Math.ceil(timeLeft));
-    this.el.time.textContent = t;
+    if (this.el.time.textContent !== String(t)) this.el.time.textContent = t;
     this.el.time.classList.toggle('warn', t <= 10);
-    this.el.target.textContent = score >= targetScore && targetScore > 0 ? 'CLEAR ✓' : targetScore.toLocaleString();
+    const targetText = score >= targetScore && targetScore > 0 ? 'CLEAR ✓' : targetScore.toLocaleString();
+    if (this.el.target.textContent !== targetText) this.el.target.textContent = targetText;
   }
 
   setGauge(ratio, active) {
-    this.el.gaugeFill.style.width = `${Math.round(ratio * 100)}%`;
+    const width = `${Math.round(ratio * 100)}%`;
+    if (this.el.gaugeFill.style.width !== width) this.el.gaugeFill.style.width = width;
     this.el.gaugeWrap.classList.toggle('active', active);
   }
 
-  /** コンボ表示(アニメを再トリガー) */
+  clearCombo() {
+    if (this.comboFrame != null) cancelAnimationFrame(this.comboFrame);
+    this.comboFrame = null;
+    this.pendingCombo = null;
+    this.lastComboAnimation = -Infinity;
+    this.comboAlternate = false;
+    this.el.comboPop.classList.remove('show', 'show-alt');
+  }
+
+  /** 同じフレームの取得をまとめ、最後のコンボだけ表示する。 */
   showCombo(mult, count) {
-    const pop = this.el.comboPop;
-    pop.textContent = `${count} COMBO · SCORE ×${mult}`;
-    const now = performance.now();
-    if (count > 2 && now - (this.lastComboAnimation || 0) < 500) return;
-    this.lastComboAnimation = now;
-    pop.classList.remove('show');
-    void pop.offsetWidth; // リフロー強制でアニメ再生し直し
-    pop.classList.add('show');
+    this.pendingCombo = { mult, count };
+    if (this.comboFrame != null) return;
+    this.comboFrame = requestAnimationFrame(() => {
+      this.comboFrame = null;
+      const latest = this.pendingCombo;
+      this.pendingCombo = null;
+      if (!latest) return;
+      const pop = this.el.comboPop;
+      const text = `${latest.count} COMBO · SCORE ×${latest.mult}`;
+      if (pop.textContent !== text) pop.textContent = text;
+      const now = performance.now();
+      if (latest.count > 2 && now - (this.lastComboAnimation ?? -Infinity) < 500) return;
+      this.lastComboAnimation = now;
+      // Alternate equivalent animation names to restart without a layout read.
+      this.comboAlternate = !this.comboAlternate;
+      pop.classList.remove('show', 'show-alt');
+      pop.classList.add(this.comboAlternate ? 'show' : 'show-alt');
+    });
   }
 
   setSoundLabel(on) {
@@ -312,5 +338,37 @@ class UI {
     this.buttons.nextStage.classList.toggle('hidden', !hasNext);
     this.el.resStory.textContent = cleared ? stage.clearText : 'エラーを回収しきれなかった。準備を整えて、もう一度挑戦しよう。';
     this.showScreen('hud', 'result');
+    if (cleared) this.showClearCoins();
+  }
+
+  showClearCoins() {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const layer = document.createElement('div');
+    layer.className = 'result-coins';
+    layer.setAttribute('aria-hidden', 'true');
+    // A viewport diagonal carries every ray fully offscreen, including tall phones.
+    const bounds = this.screens.result.getBoundingClientRect();
+    const travel = Math.hypot(bounds.width, bounds.height) + 60;
+    for (let i = 0; i < 24; i++) {
+      const coin = document.createElement('img');
+      coin.src = 'public/opt/cosmo-coin.webp';
+      coin.alt = '';
+      const angle = (i + .5) / 24 * Math.PI * 2;
+      const radius = travel * (1 + (i % 4) * .06);
+      coin.style.setProperty('--coin-x', `${Math.cos(angle) * radius}px`);
+      coin.style.setProperty('--coin-y', `${Math.sin(angle) * radius}px`);
+      coin.style.setProperty('--coin-spin', `${(i % 2 ? 1 : -1) * (180 + i * 23)}deg`);
+      coin.style.animationDelay = `${i % 6 * 35}ms`;
+      coin.addEventListener('animationend', () => {
+        coin.remove();
+        if (!layer.childElementCount) {
+          layer.remove();
+          if (this.resultCoins === layer) this.resultCoins = null;
+        }
+      }, { once: true });
+      layer.append(coin);
+    }
+    this.resultCoins = layer;
+    this.screens.result.append(layer);
   }
 }
