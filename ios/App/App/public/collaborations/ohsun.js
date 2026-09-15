@@ -98,6 +98,7 @@
       this.leave();
       this.enabled = available();
       if (!this.enabled) return;
+      this.game.audio.prepareBonusMusic();
       this.art.hidden = true;
       this.img.src = 'public/collaborations/ohsun/characters/ohsun_09.png';
       this.spawnSun();
@@ -106,6 +107,8 @@
       this.updateHUD();
     }
     leave() {
+      this.game.audio.setBonusMusic(false);
+      this.game.audio.setMusicPaused(false);
       this.enabled = false;
       this.state = 'normal';
       this.count = this.remaining = this.time = 0;
@@ -138,6 +141,7 @@
       this.remaining = 8;
       this.game.camera.shake(3);
       this.game.audio.grow();
+      this.game.audio.setBonusMusic(true);
       this.announcement.textContent = 'SUN BONUS!';
       this.updateHUD();
     }
@@ -180,6 +184,7 @@
         this.remaining = Math.max(0, this.remaining - elapsed);
         this.burstTimer -= elapsed;
         if (this.remaining <= 0) {
+          this.game.audio.setBonusMusic(false);
           this.state = 'sunBonusEnding';
           this.time = 0;
           this.game.player.sunRangeMul = 1;

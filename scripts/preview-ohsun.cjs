@@ -15,7 +15,7 @@ http.createServer((req, res) => {
   catch { res.writeHead(400).end(); return; }
   if (pathname === '/') pathname = '/index.html';
   const file = path.resolve(root, '.' + pathname);
-  const fontFile = /^\/public\/fonts\/(MPLUSRounded1c-(Regular|Black)\.ttf|OFL\.txt)$/.test(pathname) || pathname === '/public/star-match-icon.jpg';
+  const fontFile = /^\/public\/fonts\/(MPLUSRounded1c-(Regular|Black)\.ttf|OFL\.txt)$/.test(pathname) || pathname === '/public/star-match-icon.jpg' || pathname === '/public/ゲームショーのテーマ.wav';
   if ((!allowed.test(pathname) && !fontFile) || !file.startsWith(root + path.sep)) {
     res.writeHead(404).end(); return;
   }

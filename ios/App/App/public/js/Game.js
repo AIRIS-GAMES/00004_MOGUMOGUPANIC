@@ -228,7 +228,6 @@ class Game {
     this.maxScale = 1;
     this.comboCount = 0;
     this.comboTimer = 0;
-    this._lastThud = 0;
     this.time = 0;
     this.currentStageId = 1;
     this.stageIntroTimer = 0;
@@ -614,6 +613,8 @@ class Game {
 
   pauseGame() {
     if (this.state !== 'play') return;
+    this.audio?.stopPickup();
+    this.audio?.setMusicPaused(true);
     this._resetInput();
     this.state = 'pause';
     this.input.active = false;
@@ -623,6 +624,7 @@ class Game {
 
   resumeGame() {
     if (this.state !== 'pause') return;
+    this.audio?.setMusicPaused(false);
     this._resetInput();
     this.state = 'play';
     this._lastT = performance.now(); // ポーズ中の経過時間を捨てる
@@ -816,10 +818,6 @@ class Game {
             obj.y -= (dy / dist) * push;
             if (obj.wobble <= 0) {
               obj.wobble = 0.5;
-              if (this.time - this._lastThud > 0.25) {
-                this._lastThud = this.time;
-                this.audio.thud();
-              }
             }
           }
         }
@@ -903,7 +901,7 @@ class Game {
     player.mouthHold = 0.3;
     this.particles.burst(mouth.x, mouth.y, player.skin.color, this._activeEffect());
     if (obj.type.req >= 3) this.camera.shake(Math.min(10, obj.r * 0.1));
-    this.audio.pop(this.comboCount);
+    this.audio.pop(this.comboCount, Boolean(this.collaboration?.isRunning));
     this._checkTarget();
   }
 
@@ -959,32 +957,34 @@ class Game {
     this._drawBackground(ctx, view);
 
     // 描画物を y 座標でソートして奥行き感を出す
-    const drawList = [];
-    const suckingList = [];
-    this.spawner.forEachActive((obj) => {
-      if (obj.x + obj.r < view.l || obj.x - obj.r > view.r ||
-          obj.y + obj.r < view.t || obj.y - obj.r > view.b) return;
-      const entry = { y: obj.y + obj.r * 0.5, draw: () => {
-        if (this.collaboration) this.collaboration.drawItem(ctx, obj);
-        else obj.draw(ctx);
-      } };
-      if (obj.state === 'suck' && this.player && this.player.mouthOpen > 0.55) suckingList.push(entry);
-      else drawList.push(entry);
-    });
-
-    if (this.player) {
-      const p = this.player;
-      drawList.push({ y: p.y + p.bodyR * 0.7, draw: () => p.draw(ctx) });
-    } else {
-      for (const wk of this.walkers) {
-        drawList.push({ y: wk.y + 60, draw: () => this._drawWalker(ctx, wk) });
+    const drawList = this.drawList || (this.drawList = []);
+    const suckingList = this.suckingList || (this.suckingList = []);
+    drawList.length = suckingList.length = 0;
+    for (let poolIndex = 0; poolIndex < 2; poolIndex++) {
+      const pool = poolIndex === 0 ? this.spawner.pool : this.spawner.eventPool;
+      for (const obj of pool) {
+        if (!obj.active) continue;
+        if (obj.x + obj.r < view.l || obj.x - obj.r > view.r ||
+            obj.y + obj.r < view.t || obj.y - obj.r > view.b) continue;
+        const entry = this._renderEntry(obj, 'item', obj.y + obj.r * 0.5);
+        if (obj.state === 'suck' && this.player && this.player.mouthOpen > 0.55) suckingList.push(entry);
+        else drawList.push(entry);
       }
     }
 
-    drawList.sort((a, b) => a.y - b.y);
-    for (const d of drawList) d.draw();
-    suckingList.sort((a, b) => a.y - b.y);
-    for (const d of suckingList) d.draw();
+    if (this.player) {
+      const p = this.player;
+      drawList.push(this._renderEntry(p, 'player', p.y + p.bodyR * 0.7));
+    } else {
+      for (const wk of this.walkers) {
+        drawList.push(this._renderEntry(wk, 'walker', wk.y + 60));
+      }
+    }
+
+    drawList.sort(Game.compareDrawEntries);
+    for (const d of drawList) this._drawEntry(ctx, d);
+    suckingList.sort(Game.compareDrawEntries);
+    for (const d of suckingList) this._drawEntry(ctx, d);
 
     // バキューム中のスピードライン
     if (this.player && this.player.vacuumActive) this._drawSpeedLines(ctx);
@@ -995,6 +995,25 @@ class Game {
     // 画面座標系:仮想ジョイスティック
     this.collaboration?.renderWorld();
     if (this.state === 'play' && this.input.active) this._drawJoystick(ctx);
+  }
+
+  static compareDrawEntries(a, b) { return a.y - b.y; }
+
+  _renderEntry(object, kind, y) {
+    if (!this.renderEntries) this.renderEntries = new WeakMap();
+    let entry = this.renderEntries.get(object);
+    if (!entry) {
+      entry = { object, kind, y };
+      this.renderEntries.set(object, entry);
+    }
+    entry.y = y;
+    return entry;
+  }
+
+  _drawEntry(ctx, entry) {
+    if (entry.kind === 'walker') this._drawWalker(ctx, entry.object);
+    else if (entry.kind === 'item' && this.collaboration) this.collaboration.drawItem(ctx, entry.object);
+    else entry.object.draw(ctx);
   }
 
   _onRoad(v) {

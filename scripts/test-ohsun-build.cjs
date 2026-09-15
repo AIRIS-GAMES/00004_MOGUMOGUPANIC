@@ -32,6 +32,7 @@ function build(config, preview = false) {
   output = require(buildPath).out;
 }
 function normal() {
+  assert.equal(fs.existsSync(path.join(output, 'public/ゲームショーのテーマ.wav')), false);
   assert.equal(fs.existsSync(path.join(output, 'collaborations')), false);
   assert.equal(fs.existsSync(path.join(output, 'public/collaborations')), false);
   assert.equal(fs.readFileSync(path.join(output, 'index.html'), 'utf8').includes('ohsun'), false);
@@ -39,6 +40,7 @@ function normal() {
 try {
   build({ enabled: true, manual: true, startsAt: null, endsAt: null });
   assert.ok(fs.existsSync(path.join(output, 'collaborations/ohsun.js')));
+  assert.ok(fs.readFileSync(path.join(root, 'public/ゲームショーのテーマ.wav')).equals(fs.readFileSync(path.join(output, 'public/ゲームショーのテーマ.wav'))), 'Bonus theme original bytes preserved');
   assert.ok(!fs.readFileSync(path.join(output, 'index.html'), 'utf8').includes('OHSUN_COLLAB_PREVIEW'));
   build({ enabled: false, manual: true, startsAt: null, endsAt: null });
   normal();

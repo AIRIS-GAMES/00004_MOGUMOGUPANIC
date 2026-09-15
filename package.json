@@ -4,6 +4,9 @@
   "private": true,
   "description": "MOGU MOGU PANIC - ハイパーカジュアルゲーム(Web + iOS/Capacitor)",
   "scripts": {
+    "serve": "node scripts/serve.cjs",
+    "test": "node scripts/test-audio.cjs && node scripts/test-render.cjs",
+    "test:browser": "node scripts/test-audio-browser.cjs",
     "capacitor:sync:after": "node scripts/normalize-ios-paths.cjs",
     "build:collab-preview": "node scripts/build-web.js --collab-preview",
     "build:web": "node scripts/build-web.js",
