@@ -1,0 +1,35 @@
+.sun-hud { position: absolute; top: calc(78px + var(--safe-top)); left: 12px; display: flex; align-items: center; gap: 8px; max-width: calc(100% - 24px); padding: 7px 12px; border-radius: 16px; background: #fff9df; color: #795620; font-size: 12px; font-weight: 800; pointer-events: none; }
+.sun-collab-banner { display: flex; align-items: center; gap: 10px; width: min(340px, 100%); padding: 10px 14px; border: 2px solid #fff8cf; border-radius: 18px; background: linear-gradient(110deg, #ffe48a, #fff5ce); color: #795620; box-shadow: 0 3px 0 #d6b76555; flex-shrink: 0; text-align: left; }
+.sun-banner-art { display: flex; flex: 0 0 48px; flex-direction: column; align-items: center; }
+.sun-banner-art img { display: block; width: 48px; height: auto; }
+.sun-collab-banner .sun-banner-art small { margin-top: 1px; font-size: 8px; line-height: 1.2; }
+.sun-collab-banner strong { display: block; font-size: 16px; }
+.sun-collab-banner small { display: block; margin-top: 3px; font-size: 11px; }
+.sun-collab-banner { appearance: none; cursor: pointer; font-family: inherit; }
+.sun-collab-banner:focus-visible { outline: 3px solid #a16b13; outline-offset: 3px; }
+.sun-rules { margin: auto; width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom)); padding: 24px; border: 2px solid #ffe6a0; border-radius: 24px; background: #fffaf0; color: #684c2b; text-align: center; overflow-y: auto; touch-action: pan-y; font-family: inherit; }
+.sun-rules::backdrop { background: #332b2666; }
+.sun-rules h2 { font-size: 22px; margin-bottom: 12px; }
+.sun-rules p { font-size: 14px; line-height: 1.7; }
+.sun-rules-character { margin: 0 auto 12px; }
+.sun-rules-character img { display: block; width: 128px; max-width: 100%; height: auto; margin: auto; }
+.sun-rules-character figcaption { font-size: 10px; line-height: 1.4; }
+.sun-rules ol { text-align: left; padding-left: 22px; margin: 12px 0; }
+.sun-rules li { margin-bottom: 12px; padding-left: 3px; }
+.sun-rules li strong { font-size: 16px; }
+.sun-rules li p { font-size: 12px; }
+.sun-rules li::marker { color: #bd861c; font-weight: 900; }
+.sun-rules .sun-rules-note { margin: 12px 0; color: #8c7454; font-size: 11px; }
+.sun-rules .btn { min-width: min(220px, 100%); margin-top: 4px; }
+#screen-title.sun-collab-title { overflow-y: auto; touch-action: pan-y; }
+#screen-title.sun-collab-title > * { flex-shrink: 0; }
+.sun-meter { width: 66px; height: 8px; background: #e8debc; border-radius: 5px; overflow: hidden; }
+.sun-meter i { display: block; height: 100%; background: #ffc933; width: 0; }
+.sun-hud.is-bonus { background: #ffed9a; }
+.sun-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.sun-light { position: absolute; inset: 0; background: radial-gradient(ellipse at 90% 30%, #ffe07355, transparent 65%); }
+.sun-layer.is-entering .sun-light { background: radial-gradient(ellipse at 90% 30%, #fff8c080, #fff7d020 75%); }
+.sun-guest { position: absolute; left: 0; top: 0; margin: 0; text-align: center; will-change: transform; }
+.sun-guest img { display: block; width: 100%; height: auto; }
+.sun-guest figcaption { color: #554320; font: 400 11px/18px var(--font); }
+.sun-announcement { position: absolute; top: calc(119px + var(--safe-top)); left: 12px; right: 12px; text-align: center; color: #98611b; font-size: clamp(20px, 5vw, 34px); font-weight: 900; text-shadow: 0 2px #fff7db; }

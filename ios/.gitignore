@@ -1,13 +1,11 @@
 App/build
 App/Pods
 App/output
-App/App/public
 DerivedData
 xcuserdata
 
 # Cordova plugins for Capacitor
 capacitor-cordova-ios-plugins
 
-# Generated Config files
-App/App/capacitor.config.json
-App/App/config.xml
+# App/App/public and generated app configuration are committed for handoff.
+# Regenerate with npm run sync:ios; do not edit these copies directly.
