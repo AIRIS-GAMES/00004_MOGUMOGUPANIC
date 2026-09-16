@@ -430,6 +430,7 @@ class Game {
   showTitle() {
     this._resetInput();
     this.collaboration?.leave();
+    this.audio.setMusicPaused(false);
     this.state = 'title';
     this.player = null;
     const center = Game.WORLD / 2;
@@ -756,8 +757,8 @@ class Game {
     if (player.vacuumActive) {
       const m = player.getMouth();
       this.particles.vacuumSpark(m.x, m.y, m.r * 1.1, this._activeEffect());
-      this.ui.setGauge(player.vacuumGauge, true);
     }
+    this.ui.setGauge(player.vacuumGauge, player.vacuumActive);
 
     // カメラ追従
     this.camera.follow(player.x, player.y, this._targetZoom(), dt);

@@ -43,6 +43,7 @@ const server = http.createServer((req, res) => {
     const run = async (url) => {
       await page.goto(url);
       await page.waitForFunction(() => window.__game?.state === 'title');
+      if (await page.locator('#privacy-banner').isVisible()) await page.locator('#btn-privacy-close').click();
       await page.evaluate(() => __game.ui.closeLoginBonus());
       if (url.includes('ohsun-preview=1')) {
         assert.equal(await page.locator('.sun-collab-banner').isVisible(), true);

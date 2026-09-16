@@ -17,6 +17,16 @@
 
   <canvas id="game"></canvas>
 
+  <aside id="privacy-banner" class="privacy-banner hidden" aria-label="プレイデータの利用について">
+    <p>ゲームの改善のため、GameAnalyticsでプレイ状況を収集してもよいですか？ 同意しなくても遊べます。
+      <a href="https://airis-games.com/privacy-policy/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
+    </p>
+    <div class="privacy-actions">
+      <button id="btn-privacy-close" class="privacy-btn privacy-btn-ghost" type="button">同意しない</button>
+      <button id="btn-privacy-accept" class="privacy-btn" type="button">同意する</button>
+    </div>
+  </aside>
+
   <div id="hud" class="screen hidden">
     <div class="hud-top">
       <div class="hud-stat">

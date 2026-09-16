@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 let now = 1000, localFails = false;
 const local = new Map();
-const ctx = vm.createContext({ console, window: {}, document: { hidden: false },
+const ctx = vm.createContext({ console, setTimeout, clearTimeout, window: {}, document: { hidden: false },
   performance: { now: () => now }, requestAnimationFrame: () => {},
   localStorage: { getItem: k => local.get(k) ?? null, setItem: (k, v) => { if (localFails) throw Error('unavailable'); local.set(k, v); } } });
 for (const file of ['Storage', 'Player', 'Game', 'UI']) vm.runInContext(fs.readFileSync(path.join(root, `js/${file}.js`), 'utf8'), ctx);
@@ -72,17 +72,17 @@ const Storage = vm.runInContext('Storage', ctx), Game = vm.runInContext('Game', 
   localFails = true;
   Storage.set('coins', 123);
   await Storage.flush();
-  assert.equal(native[0].value, '123');
+  assert.equal(JSON.parse(native[0].value).raw, '123');
   assert.equal(Storage.get('coins', 0), 123);
   localFails = false;
   Storage.preferences = { set: async () => { throw Error('native unavailable'); } };
   Storage.set('coins', 456);
   await Storage.flush();
-  assert.equal(local.get('coins'), '456');
+  assert.equal(JSON.parse(local.get('coins')).raw, '456');
   Storage.preferences = { set: async value => native.push(value) };
   Storage.set('coins', 1); Storage.set('coins', 2);
   await Storage.flush();
-  assert.equal(native.at(-1).value, '2');
+  assert.equal(JSON.parse(native.at(-1).value).raw, '2');
 
   let released = null, eventElapsed = 0;
   const g = Object.create(Game.prototype);

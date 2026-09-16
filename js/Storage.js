@@ -26,53 +26,135 @@ class Storage {
   };
 
   static cache = new Map();
+  static records = new Map();
+  static dirty = new Set();
+  static queued = new Map();
+  static revision = 0;
   static preferences = null;
   static pendingWrites = Promise.resolve();
+  static IO_TIMEOUT = 5000;
+
+  // Each value and its revision are stored together in one atomic store entry.
+  // Legacy JSON saves have revision zero and remain readable.
+  static decode(raw) {
+    if (raw === null) return null;
+    const value = JSON.parse(raw);
+    if (value?.__moguSave === 1) {
+      if (!Number.isSafeInteger(value.revision) || value.revision < 0 || typeof value.raw !== 'string') {
+        throw new Error('保存データの形式が正しくありません');
+      }
+      JSON.parse(value.raw);
+      return value;
+    }
+    return { __moguSave: 1, revision: 0, raw };
+  }
+
+  static localRecord(key) {
+    try { return Storage.decode(localStorage.getItem(key)); }
+    catch (_) { return null; }
+  }
+
+  static mirror(key, record) {
+    try { localStorage.setItem(key, JSON.stringify(record)); } catch (_) {}
+  }
+
+  static async startupCall(call) {
+    let timer;
+    try {
+      return await Promise.race([
+        Promise.resolve().then(call),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            const error = new Error('保存データの処理がタイムアウトしました');
+            error.code = 'STORAGE_TIMEOUT';
+            reject(error);
+          }, Storage.IO_TIMEOUT);
+        }),
+      ]);
+    } finally { clearTimeout(timer); }
+  }
 
   static async init() {
     const capacitor = window.Capacitor;
     const available = capacitor?.isPluginAvailable?.('Preferences') ?? Boolean(capacitor?.Plugins?.Preferences);
     Storage.preferences = available ? capacitor?.Plugins?.Preferences || null : null;
-    if (!Storage.preferences) return;
-
+    const loaded = new Map();
+    const repairs = [];
+    // Finish all reads before updating either store. Native read errors must
+    // stop startup: an older local copy is not proof that progress is current.
     for (const key of Object.values(Storage.KEYS)) {
-      try {
-        const result = await Storage.preferences.get({ key });
-        let raw = result.value;
-        if (raw === null) {
-          raw = localStorage.getItem(key);
-          if (raw !== null) await Storage.preferences.set({ key, value: raw });
-        }
-        if (raw !== null) Storage.cache.set(key, raw);
-      } catch (_) { /* localStorage fallback remains available */ }
+      const local = Storage.localRecord(key);
+      let native = null;
+      if (Storage.preferences) {
+        const result = await Storage.startupCall(() => Storage.preferences.get({ key }));
+        native = Storage.decode(result.value);
+      }
+      const record = local && (!native || local.revision > native.revision) ? local : native;
+      if (!record) continue;
+      loaded.set(key, record);
+      if (Storage.preferences && (!native || record.revision > native.revision)) repairs.push(key);
     }
+    for (const [key, record] of loaded) {
+      Storage.records.set(key, record);
+      Storage.cache.set(key, record.raw);
+      Storage.revision = Math.max(Storage.revision, record.revision);
+      Storage.mirror(key, record);
+    }
+    for (const key of repairs) Storage.queueWrite(key);
   }
 
   static get(key, fallback) {
     try {
-      const raw = Storage.cache.has(key) ? Storage.cache.get(key) : localStorage.getItem(key);
-      return raw === null ? fallback : JSON.parse(raw);
-    } catch (_) {
-      return fallback;
-    }
+      const raw = Storage.cache.has(key) ? Storage.cache.get(key) : Storage.localRecord(key)?.raw;
+      return raw == null ? fallback : JSON.parse(raw);
+    } catch (_) { return fallback; }
   }
 
   static set(key, value) {
     let raw;
     try {
       raw = JSON.stringify(value);
-      Storage.cache.set(key, raw);
+      if (typeof raw !== 'string') return;
     } catch (_) { return; }
-    try { localStorage.setItem(key, raw); } catch (_) { /* Native storage may still work. */ }
-    const preferences = Storage.preferences;
-    if (preferences) {
-      Storage.pendingWrites = Storage.pendingWrites
-        .then(() => preferences.set({ key, value: raw }))
-        .catch(() => {});
-    }
+    const previous = Storage.localRecord(key);
+    Storage.revision = Math.max(Storage.revision, previous?.revision || 0, Date.now()) + 1;
+    const record = { __moguSave: 1, revision: Storage.revision, raw };
+    Storage.records.set(key, record);
+    Storage.cache.set(key, raw);
+    Storage.mirror(key, record);
+    if (Storage.preferences) Storage.queueWrite(key);
   }
 
-  static async flush() { await Storage.pendingWrites; }
+  static queueWrite(key) {
+    const record = Storage.records.get(key);
+    const preferences = Storage.preferences;
+    if (!record || !preferences) return;
+    Storage.dirty.add(key);
+    if (Storage.queued.get(key) === record.revision) return;
+    Storage.queued.set(key, record.revision);
+    Storage.pendingWrites = Storage.pendingWrites.then(async () => {
+      // Coalesce outdated requests before they reach the native bridge.
+      if (Storage.records.get(key) !== record) return;
+      try {
+        await Storage.startupCall(() => Promise.resolve(preferences.set({ key, value: JSON.stringify(record) })).then(() => {
+          if (Storage.records.get(key) === record) Storage.dirty.delete(key);
+          else {
+            // A timed-out native call may still finish after a newer save.
+            // Repair that late write using the current value.
+            Storage.queueWrite(key);
+          }
+        }));
+      } catch (_) { /* Keep the local revision and retry on flush/foreground. */ }
+      finally {
+        if (Storage.queued.get(key) === record.revision) Storage.queued.delete(key);
+      }
+    });
+  }
+
+  static async flush() {
+    for (const key of Storage.dirty) Storage.queueWrite(key);
+    await Storage.pendingWrites;
+  }
 
   static getSkin()   { return Storage.get(Storage.KEYS.skin, 'red'); }
   static setSkin(id) { Storage.set(Storage.KEYS.skin, id); }
