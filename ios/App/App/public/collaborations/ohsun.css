@@ -13,7 +13,6 @@
 .sun-rules p { font-size: 14px; line-height: 1.7; }
 .sun-rules-character { margin: 0 auto 12px; }
 .sun-rules-character img { display: block; width: 128px; max-width: 100%; height: auto; margin: auto; }
-.sun-rules-character figcaption { font-size: 10px; line-height: 1.4; }
 .sun-rules ol { text-align: left; padding-left: 22px; margin: 12px 0; }
 .sun-rules li { margin-bottom: 12px; padding-left: 3px; }
 .sun-rules li strong { font-size: 16px; }
@@ -31,5 +30,4 @@
 .sun-layer.is-entering .sun-light { background: radial-gradient(ellipse at 90% 30%, #fff8c080, #fff7d020 75%); }
 .sun-guest { position: absolute; left: 0; top: 0; margin: 0; text-align: center; will-change: transform; }
 .sun-guest img { display: block; width: 100%; height: auto; }
-.sun-guest figcaption { color: #554320; font: 400 11px/18px var(--font); }
 .sun-announcement { position: absolute; top: calc(119px + var(--safe-top)); left: 12px; right: 12px; text-align: center; color: #98611b; font-size: clamp(20px, 5vw, 34px); font-weight: 900; text-shadow: 0 2px #fff7db; }

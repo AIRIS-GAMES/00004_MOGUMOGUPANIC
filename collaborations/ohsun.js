@@ -37,15 +37,15 @@
       this.banner = document.createElement('button');
       this.banner.type = 'button';
       this.banner.className = 'sun-collab-banner hidden';
-      this.banner.setAttribute('aria-label', 'おっ！さんコラボのルール説明を開く');
+      this.banner.setAttribute('aria-label', 'おっ！サンコラボのルール説明を開く');
       this.banner.setAttribute('aria-haspopup', 'dialog');
-      this.banner.innerHTML = '<span class="sun-banner-art"><img alt="おっ！サン"><small>©SUN-TV</small></span><span><strong>おっ！さんコラボ開催中</strong><small>レアな太陽を集めよう · タップでルール</small></span>';
+      this.banner.innerHTML = '<span class="sun-banner-art"><img alt="おっ！サン"><small>©SUN-TV</small></span><span><strong>おっ！サンコラボ開催中</strong><small>レアな太陽を集めよう · タップでルール</small></span>';
       document.querySelector('#screen-title .title-hint').after(this.banner);
       this.rules = document.createElement('dialog');
       this.rules.className = 'sun-rules';
       this.rules.setAttribute('aria-labelledby', 'sun-rules-title');
       this.rules.innerHTML = `<h2 id="sun-rules-title">☀ SUN BONUSの遊び方</h2>
-        <figure class="sun-rules-character"><img alt="サンテレビ公式キャラクター おっ！サン"><figcaption>©SUN-TV</figcaption></figure>
+        <figure class="sun-rules-character"><img alt="サンテレビ公式キャラクター おっ！サン"></figure>
         <ol>
           <li><strong>虹色の太陽を5個集める</strong><p>黄色い★コインとは別のアイテム！</p></li>
           <li><strong>おっ！サンが登場！</strong><p>毎ステージ初回は自動お助けも！</p></li>
@@ -81,7 +81,7 @@
       document.getElementById('hud').append(this.hud);
       this.layer = document.createElement('div');
       this.layer.className = 'sun-layer hidden';
-      this.layer.innerHTML = '<div class="sun-light"></div><figure class="sun-guest"><img alt="おっ！サン"><figcaption>©SUN-TV</figcaption></figure><p class="sun-announcement" role="status"></p>';
+      this.layer.innerHTML = '<div class="sun-light"></div><figure class="sun-guest"><img alt="おっ！サン"></figure><p class="sun-announcement" role="status"></p>';
       document.getElementById('app').append(this.layer);
       this.art = this.layer.querySelector('figure');
       this.img = this.layer.querySelector('img');
