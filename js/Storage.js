@@ -19,10 +19,7 @@ class Storage {
     lastSeenAt: 'mogu.lastSeenAt',
     lastClaimAt: 'mogu.lastClaimAt',
     stageBests: 'mogu.stageBests',
-    sunStageBests: 'mogu.sunStageBests',
-    sunBest: 'mogu.sunBest',
     clearTimes: 'mogu.clearTimes',
-    sunClearTimes: 'mogu.sunClearTimes',
   };
 
   static cache = new Map();
@@ -159,17 +156,17 @@ class Storage {
   static getSkin()   { return Storage.get(Storage.KEYS.skin, 'red'); }
   static setSkin(id) { Storage.set(Storage.KEYS.skin, id); }
 
-  static getBest(sun = false)  { return Storage.get(sun ? Storage.KEYS.sunBest : Storage.KEYS.best, 0); }
-  static setBest(v, sun = false) { Storage.set(sun ? Storage.KEYS.sunBest : Storage.KEYS.best, v); }
+  static getBest()  { return Storage.get(Storage.KEYS.best, 0); }
+  static setBest(v) { Storage.set(Storage.KEYS.best, v); }
 
   /** ステージ別ベストスコア。{ [stageId]: score } を保持 */
-  static getStageBest(stageId, sun = false) {
-    const map = Storage.get(sun ? Storage.KEYS.sunStageBests : Storage.KEYS.stageBests, {});
+  static getStageBest(stageId) {
+    const map = Storage.get(Storage.KEYS.stageBests, {});
     const v = map && typeof map === 'object' ? Number(map[stageId]) : 0;
     return Number.isFinite(v) ? v : 0;
   }
-  static setStageBest(stageId, score, sun = false) {
-    const key = sun ? Storage.KEYS.sunStageBests : Storage.KEYS.stageBests;
+  static setStageBest(stageId, score) {
+    const key = Storage.KEYS.stageBests;
     const raw = Storage.get(key, {});
     const map = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     map[stageId] = Math.max(0, Math.floor(score));
@@ -177,14 +174,14 @@ class Storage {
   }
 
   static getSound()  { return Storage.get(Storage.KEYS.sound, true); }
-  static getClearTime(stageId, sun = false) {
-    const map = Storage.get(sun ? Storage.KEYS.sunClearTimes : Storage.KEYS.clearTimes, {});
+  static getClearTime(stageId) {
+    const map = Storage.get(Storage.KEYS.clearTimes, {});
     const value = map?.[stageId];
     return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
   }
-  static setClearTime(stageId, seconds, sun = false) {
+  static setClearTime(stageId, seconds) {
     if (!Number.isFinite(seconds) || seconds < 0) return;
-    const key = sun ? Storage.KEYS.sunClearTimes : Storage.KEYS.clearTimes;
+    const key = Storage.KEYS.clearTimes;
     const raw = Storage.get(key, {});
     const map = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     map[stageId] = seconds;

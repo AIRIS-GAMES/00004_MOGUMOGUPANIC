@@ -10,8 +10,6 @@ class AudioSys {
     this.bgm.loop = true;
     this.bgm.preload = 'auto';
     this.bgm.volume = 0.20;
-    this.bonusBgm = null;
-    this.bonusMusicActive = false;
     this.musicPaused = false;
     this.musicPending = new Map();
     this.sfx = {};
@@ -43,9 +41,8 @@ class AudioSys {
     else this.pauseAll();
   }
   playBgm() {
-    const music = this.bonusMusicActive ? this.bonusBgm : this.bgm;
+    const music = this.bgm;
     if (!this.ready || this.musicPaused || !music || !music.paused) return;
-    if (this.bonusMusicActive && music.ended) return;
     const pending = this.musicPending.get(music);
     if (pending) { pending.retry = true; return; }
     const token = {};
@@ -53,41 +50,19 @@ class AudioSys {
     try {
       Promise.resolve(music.play()).catch(() => {}).finally(() => {
         if (this.musicPending.get(music) === token) this.musicPending.delete(music);
-        const selected = this.bonusMusicActive ? this.bonusBgm : this.bgm;
-        if (!this.ready || this.musicPaused || music !== selected) music.pause();
+        if (!this.ready || this.musicPaused) music.pause();
         else if (token.retry) this.playBgm();
       });
     } catch (_) { this.musicPending.delete(music); }
   }
-  prepareBonusMusic() {
-    if (this.bonusBgm) return;
-    this.bonusBgm = new Audio('public/' + encodeURIComponent('ゲームショーのテーマ.wav'));
-    this.bonusBgm.preload = 'auto';
-    this.bonusBgm.loop = false; // Theme is trimmed to the bonus duration.
-    this.bonusBgm.volume = .20;
-  }
-  setBonusMusic(on) {
-    on = Boolean(on);
-    if (this.bonusMusicActive === on) return;
-    this.stopPickup();
-    this.bgm.pause();
-    this.bonusBgm?.pause();
-    this.bonusMusicActive = on;
-    if (on) {
-      this.prepareBonusMusic();
-      try { this.bonusBgm.currentTime = 0; } catch (_) {}
-    }
-    this.playBgm();
-  }
   setMusicPaused(paused) {
     this.musicPaused = Boolean(paused);
-    if (this.musicPaused) { this.bgm.pause(); this.bonusBgm?.pause(); }
+    if (this.musicPaused) this.bgm.pause();
     else this.playBgm();
   }
   pauseAll() {
     this.stopPickup();
     this.bgm.pause();
-    this.bonusBgm?.pause();
     for (const audio of Object.values(this.sfx)) {
       audio.pause();
       try { audio.currentTime = 0; } catch (_) {}
@@ -152,7 +127,7 @@ class AudioSys {
   }
   pop(combo = 1, bonus = false) {
     if (!this.ready) return;
-    if (bonus || this.bonusMusicActive) return;
+    if (bonus) return;
     if (this.pickupBusy()) return;
     this.pendingCombo = 1; // Fixed low pickup tone, independent of combo count.
     this.pendingPopAt = performance.now();
@@ -169,7 +144,7 @@ class AudioSys {
     this.popFrame = requestAnimationFrame(() => {
       this.popFrame = null;
       const now = performance.now();
-      if (!this.ready || this.bonusMusicActive || this.pendingCombo == null || now - this.pendingPopAt > 180) {
+      if (!this.ready || this.pendingCombo == null || now - this.pendingPopAt > 180) {
         this.stopPickup();
         return;
       }

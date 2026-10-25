@@ -8,12 +8,10 @@
     "test": "node scripts/test-audio.cjs && node scripts/test-render.cjs && node scripts/test-core-regressions.cjs && node scripts/test-storage.cjs",
     "test:browser": "node scripts/test-audio-browser.cjs",
     "capacitor:sync:after": "node scripts/normalize-ios-paths.cjs",
-    "build:collab-preview": "node scripts/build-web.js --collab-preview",
     "build:web": "node scripts/build-web.js",
     "sync": "npm run sync:ios",
     "sync:ios": "node scripts/sync-ios.cjs",
-    "sync:ios:collab": "node scripts/sync-ios.cjs --collab-preview",
-    "sync:ios:normal": "node scripts/sync-ios.cjs --normal",
+    "sync:ios:normal": "node scripts/sync-ios.cjs",
     "open:ios": "cap open ios",
     "icons": "capacitor-assets generate --ios --iconBackgroundColor #7ec8e3 --iconBackgroundColorDark #16323d"
   },

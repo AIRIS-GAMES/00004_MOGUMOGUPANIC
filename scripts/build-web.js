@@ -18,17 +18,6 @@ const ROOT = path.resolve(__dirname, '..');
 const OUT = process.argv.includes('--test-build')
   ? fs.mkdtempSync(path.join(require('os').tmpdir(), 'mogu-build-test-'))
   : path.join(ROOT, 'www');
-const collaboration = require('../collaborations/ohsun.config.js');
-const preview = process.argv.includes('--collab-preview');
-const startsAt = Date.parse(collaboration.startsAt);
-const endsAt = Date.parse(collaboration.endsAt);
-const scheduled = Number.isFinite(startsAt) && Number.isFinite(endsAt) && startsAt < endsAt;
-if (collaboration.enabled && !preview &&
-    (collaboration.startsAt !== null || collaboration.endsAt !== null) && !scheduled) {
-  throw new Error('コラボ開始・終了日時を正しく指定してください。');
-}
-const includeCollaboration = collaboration.enabled && (collaboration.manual === true || preview || (scheduled && Date.now() < endsAt));
-
 /** コピー対象。ファイル or ディレクトリ(glob不要の単純指定) */
 const FILES = ['index.html', 'style.css', 'main.js'];
 const DIRS = [
@@ -39,7 +28,6 @@ const DIRS = [
 ];
 // public 直下で個別に必要なBGM
 const PUBLIC_FILES = ['Neon Arcade.mp3', 'star-match-icon.jpg'];
-if (includeCollaboration) PUBLIC_FILES.push('ゲームショーのテーマ.wav');
 
 function rimraf(target) {
   if (fs.existsSync(target)) fs.rmSync(target, { recursive: true, force: true });
@@ -65,17 +53,6 @@ function main() {
     const src = path.join(ROOT, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(OUT, f));
   }
-  const htmlPath = path.join(OUT, 'index.html');
-  let html = fs.readFileSync(htmlPath, 'utf8');
-  if (!includeCollaboration) {
-    html = html.replace(/<!-- OHSUN_COLLAB_START -->[\s\S]*?<!-- OHSUN_COLLAB_END -->\s*/g, '');
-  } else {
-    copyDir('collaborations', 'collaborations', /^ohsun\.(config\.js|js|css)$/);
-    // 原本PNGをバイト列のままコピー。source/review/READMEは配布しない。
-    copyDir('public/collaborations/ohsun/characters', 'public/collaborations/ohsun/characters', /^ohsun_09\.png$/);
-    if (preview) html = html.replace('<script src="collaborations/ohsun.js">', '<script>window.OHSUN_COLLAB_PREVIEW = true;</script>\n<script src="collaborations/ohsun.js">');
-  }
-  fs.writeFileSync(htmlPath, html);
   for (const d of DIRS) copyDir(d.from, d.to, d.match);
 
   fs.mkdirSync(path.join(OUT, 'public'), { recursive: true });
@@ -94,7 +71,7 @@ function main() {
     }
   })(OUT);
   console.log(`${OUT} を生成しました (${count} ファイル)`);
-  console.log(includeCollaboration ? (preview ? 'コラボ確認用：一般公開しないでください。' : collaboration.manual ? 'コラボ有効版：手動終了まで有効。' : 'コラボ期間設定を含むビルド') : '通常版：コラボ素材・専用コードは含まれません。');
+  console.log('配信ビルドを生成しました。');
 }
 
 main();

@@ -220,6 +220,7 @@ class Game {
     this.spawner = new Spawner(Game.WORLD, 300);
     this.particles = new Particles();
     this.player = null;
+    this.cosmiiAbility = new CosmiiAbility(this);
 
     // スコア関連
     this.score = 0;
@@ -429,7 +430,7 @@ class Game {
 
   showTitle() {
     this._resetInput();
-    this.collaboration?.leave();
+    this.cosmiiAbility?.leave();
     this.audio.setMusicPaused(false);
     this.state = 'title';
     this.player = null;
@@ -478,7 +479,7 @@ class Game {
     this._leaveTitle();
     this.state = 'stage';
     this.ui.buildStageGrid(
-      Game.STAGES.map(stage => this.collaboration?.stageConfig(stage) || stage),
+      Game.STAGES,
       Math.min(Storage.getUnlockedStage(), Game.STAGES.length),
       Storage.getClearedStages(),
       (stageId) => { this._btn(); this.openBoosts(stageId, 'stage'); }
@@ -607,8 +608,7 @@ class Game {
     this.stageIntroTimer = 3.5;
     this.state = 'intro';
     this.input.active = false;
-    this.collaboration?.startRun();
-    this.sunRecord = Boolean(this.collaboration?.enabled);
+    this.cosmiiAbility.startRun();
     Analytics.stageStart(stage.id);
   }
 
@@ -620,7 +620,6 @@ class Game {
     this.state = 'pause';
     this.input.active = false;
     this.ui.showScreen('hud', 'pause');
-    this.collaboration?.tick();
   }
 
   resumeGame() {
@@ -638,24 +637,24 @@ class Game {
     this.state = 'result';
     this.input.active = false;
 
-    this.collaboration?.leave();
+    this.cosmiiAbility.leave();
 
-    const stage = this.getStage(this.currentStageId, this.sunRecord);
+    const stage = this.getStage(this.currentStageId);
 
     // Preserve score history; the record badge now celebrates faster clears.
-    const prevStageBest = Storage.getStageBest(stage.id, this.sunRecord);
+    const prevStageBest = Storage.getStageBest(stage.id);
     let isNewBest = false;
-    if (this.score > prevStageBest) Storage.setStageBest(stage.id, this.score, this.sunRecord);
+    if (this.score > prevStageBest) Storage.setStageBest(stage.id, this.score);
     // 全体ベスト(生涯ハイスコア)は別途更新し続ける
-    if (this.score > Storage.getBest(this.sunRecord)) Storage.setBest(this.score, this.sunRecord);
+    if (this.score > Storage.getBest()) Storage.setBest(this.score);
 
     const cleared = this.score >= stage.targetScore;
     if (cleared) this.audio.clear();
     else this.audio.timeup();
-    const previousTime = Storage.getClearTime(stage.id, this.sunRecord);
+    const previousTime = Storage.getClearTime(stage.id);
     if (cleared && this.clearTime == null) this.clearTime = Math.max(0, this.runTimeLimit - this.timeLeft);
     if (cleared && (previousTime === null || this.clearTime < previousTime)) {
-      Storage.setClearTime(stage.id, this.clearTime, this.sunRecord);
+      Storage.setClearTime(stage.id, this.clearTime);
       isNewBest = previousTime !== null;
     }
     // 報酬:初回クリアは満額、再クリアは25%(コイン経済のインフレ防止)
@@ -683,10 +682,10 @@ class Game {
     this.ui.showResult({
       score: this.score,
       best: Math.max(prevStageBest, this.score),
-      bestLabel: this.sunRecord ? 'SUN BEST' : 'BEST',
+      bestLabel: 'BEST',
       isNewBest,
       clearTime: cleared ? this.clearTime : null,
-      bestTime: Storage.getClearTime(stage.id, this.sunRecord),
+      bestTime: Storage.getClearTime(stage.id),
       count: this.suckedCount,
       maxSize: this.maxScale,
       cleared,
@@ -700,7 +699,6 @@ class Game {
 
   _loop(now) {
     requestAnimationFrame((t) => this._loop(t));
-    this.collaboration?.tick();
     const elapsed = Math.max(0, (now - this._lastT) / 1000);
     this._lastT = now;
     if (document.hidden) return;
@@ -732,8 +730,8 @@ class Game {
   _updatePlay(dt, elapsed = dt) {
     const player = this.player;
     this.timeLeft = Math.max(0, this.timeLeft - elapsed);
-    if (this.timeLeft <= 0 && !this.collaboration?.isRunning) {
-      const stage = this.getStage(this.currentStageId, this.sunRecord);
+    if (this.timeLeft <= 0 && !this.cosmiiAbility.isRunning) {
+      const stage = this.getStage(this.currentStageId);
       this.ui.updateHUD(this.score, player.scale, 0, stage.targetScore);
       this.endGame();
       return;
@@ -746,7 +744,7 @@ class Game {
     }
 
     player.update(this._getMoveInput(), dt, Game.WORLD, elapsed);
-    this.collaboration?.update(dt, elapsed);
+    this.cosmiiAbility.update(dt, elapsed);
     if (this._checkTarget()) return;
     this._updateSuction(dt);
     if (this.state !== 'play') return;
@@ -765,26 +763,21 @@ class Game {
     this.camera.update(dt);
 
     // 制限時間
-    const stage = this.getStage(this.currentStageId, this.sunRecord);
+    const stage = this.getStage(this.currentStageId);
     this.ui.updateHUD(this.score, player.scale, this.timeLeft, stage.targetScore);
-    if (this.timeLeft <= 0 && !this.collaboration?.isRunning) this.endGame();
+    if (this.timeLeft <= 0 && !this.cosmiiAbility.isRunning) this.endGame();
   }
 
-  /** Resolve the displayed target and the run's collaboration target consistently. */
-  getStage(stageId, collaborationEnabled) {
-    const stage = Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
-    return this.collaboration?.stageConfig?.(stage, collaborationEnabled) || stage;
+  getStage(stageId) {
+    return Game.STAGES.find(item => item.id === stageId) || Game.STAGES[0];
   }
 
   _checkTarget() {
-    const stage = this.getStage(this.currentStageId, this.sunRecord);
+    const stage = this.getStage(this.currentStageId);
     if (this.score < stage.targetScore) return false;
-    const event = this.collaboration;
-    event?.ensureFirstBonus?.();
     const played = Math.max(0, this.runTimeLimit - this.timeLeft);
     if (this.clearTime == null) this.clearTime = played;
-    const bonusRunning = event?.enabled && ['sunBonusEntering', 'sunBonusActive', 'sunBonusEnding'].includes(event.state);
-    if (bonusRunning) return false;
+    if (this.cosmiiAbility.isRunning) return false;
     this.ui.updateHUD(this.score, this.player.scale, this.timeLeft, stage.targetScore);
     this.endGame();
     return true;
@@ -874,8 +867,8 @@ class Game {
     if (mult >= 2) this.ui.showCombo(mult, this.comboCount);
 
     const itemScoreMultiplier = obj.scoreOnly ? 0.5 : 1;
-    this.score += Math.floor(obj.type.score * itemScoreMultiplier * mult * this.scoreMultiplier * (this.collaboration?.scoreMultiplier || 1));
-    this.collaboration?.onConsume(obj);
+    this.score += Math.floor(obj.type.score * itemScoreMultiplier * mult * this.scoreMultiplier * this.cosmiiAbility.scoreMultiplier);
+    this.cosmiiAbility.onConsume(obj);
 
     // 成長:大きいオブジェクトほどよく育つ(基本 +0.01)
     const grew = !obj.scoreOnly && player.grow(0.01 + obj.type.req * 0.012);
@@ -902,7 +895,7 @@ class Game {
     player.mouthHold = 0.3;
     this.particles.burst(mouth.x, mouth.y, player.skin.color, this._activeEffect());
     if (obj.type.req >= 3) this.camera.shake(Math.min(10, obj.r * 0.1));
-    this.audio.pop(this.comboCount, Boolean(this.collaboration?.isRunning));
+    this.audio.pop(this.comboCount, this.cosmiiAbility.isRunning);
     this._checkTarget();
   }
 
@@ -994,7 +987,6 @@ class Game {
     ctx.restore();
 
     // 画面座標系:仮想ジョイスティック
-    this.collaboration?.renderWorld();
     if (this.state === 'play' && this.input.active) this._drawJoystick(ctx);
   }
 
@@ -1013,7 +1005,7 @@ class Game {
 
   _drawEntry(ctx, entry) {
     if (entry.kind === 'walker') this._drawWalker(ctx, entry.object);
-    else if (entry.kind === 'item' && this.collaboration) this.collaboration.drawItem(ctx, entry.object);
+    else if (entry.kind === 'item' && this.cosmiiAbility) this.cosmiiAbility.drawItem(ctx, entry.object);
     else entry.object.draw(ctx);
   }
 

@@ -117,7 +117,6 @@
 
       phase = 'ゲーム';
       const game = new Game(document.getElementById('game'), images, ui, audio, privacy);
-      if (window.OhSunCollaboration) game.collaboration = new window.OhSunCollaboration(game);
       game.showTitle();
       document.addEventListener('visibilitychange', () => {
         audio.setBackgroundPaused(document.hidden, 'visibility');

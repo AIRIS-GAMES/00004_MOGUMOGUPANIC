@@ -72,7 +72,7 @@ const server = http.createServer((req, res) => {
         // Fixed starting setup stresses the reported bonus/mass-pickup case.
         g.player.scale = 4;
         g._checkTarget = () => false;
-        g.collaboration.beginBonus();
+        g.cosmiiAbility.beginBonus();
         g._getMoveInput = () => {
           const m = g.player.getMouth(); let target = null, best = Infinity;
           g.spawner.forEachActive(o => {

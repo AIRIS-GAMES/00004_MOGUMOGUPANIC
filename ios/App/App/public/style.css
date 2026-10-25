@@ -62,6 +62,71 @@ html, body {
   touch-action: none;
 }
 
+.cosmii-bonus-hud {
+  position: absolute;
+  top: calc(78px + var(--safe-top));
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 7px 12px;
+  border-radius: 16px;
+  background: #fff9df;
+  color: #795620;
+  font-size: 12px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.cosmii-bonus-hud.is-bonus { background: #ffed9a; }
+.cosmii-bonus-meter {
+  width: 66px;
+  height: 8px;
+  background: #e8debc;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.cosmii-bonus-meter i { display: block; height: 100%; width: 0; background: #ffc933; }
+.cosmii-ability-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.cosmii-ability-character {
+  position: absolute;
+  top: 28%;
+  right: 2%;
+  width: min(36vw, 280px);
+  max-height: 48vh;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.2));
+}
+.cosmii-ability-announcement {
+  position: absolute;
+  top: calc(116px + var(--safe-top));
+  left: 12px;
+  right: 12px;
+  text-align: center;
+  color: #9d5290;
+  font-size: clamp(20px, 5vw, 34px);
+  font-weight: 900;
+  text-shadow: 0 2px #fff;
+}
+.cosmii-ability-layer.is-entering .cosmii-ability-character {
+  animation: cosmii-ability-in 650ms ease-out both;
+}
+.cosmii-ability-layer.is-ending .cosmii-ability-character {
+  animation: cosmii-ability-out 1s ease-in both;
+}
+@keyframes cosmii-ability-in {
+  from { opacity: 0; transform: translateX(70px) scale(0.75); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes cosmii-ability-out {
+  to { opacity: 0; transform: translateX(70px) scale(0.75); }
+}
+
 /* ===== 画面(スクリーン)共通 ===== */
 .screen { position: absolute; inset: 0; }
 .hidden { display: none !important; }

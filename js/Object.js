@@ -316,6 +316,25 @@ const OBJECT_PAINTERS = {
       g.stroke();
     }
   },
+
+  rainbowToken(g, u) {
+    const colors = ['#ff627f', '#ffa447', '#ffe45e', '#68dca1', '#55cde7', '#6994ff', '#ad80ef', '#ef82cb'];
+    g.lineWidth = u * 0.15;
+    g.lineCap = 'round';
+    for (let i = 0; i < colors.length; i++) {
+      const angle = i * Math.PI / 4;
+      g.strokeStyle = colors[i];
+      g.beginPath();
+      g.moveTo(Math.cos(angle) * u * 0.78, Math.sin(angle) * u * 0.78);
+      g.lineTo(Math.cos(angle) * u * 1.1, Math.sin(angle) * u * 1.1);
+      g.stroke();
+    }
+    this._dot(g, 0, 0, u * 0.69, '#ffffff');
+    const rainbow = g.createLinearGradient(-u * 0.5, -u * 0.5, u * 0.5, u * 0.5);
+    colors.forEach((color, i) => rainbow.addColorStop(i / (colors.length - 1), color));
+    this._dot(g, 0, 0, u * 0.58, rainbow);
+    this._dot(g, -u * 0.16, -u * 0.18, u * 0.14, '#ffffffbb');
+  },
 };
 
 class GameObject {

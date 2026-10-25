@@ -40,7 +40,6 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       await page.close();
     }
     const page = await browser.newPage();
-    await page.route('**/collaborations/ohsun.js', r => r.fulfill({ contentType: 'text/javascript', body: '' }));
     await page.goto(base); await page.waitForFunction(() => window.__game);
     await page.locator('#btn-privacy-close').click();
     const result = await page.evaluate(() => {

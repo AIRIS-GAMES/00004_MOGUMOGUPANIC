@@ -97,9 +97,6 @@ const server = http.createServer((req, res) => {
     assert.equal(delayedPickup.starts, 1);
     assert.ok(delayedPickup.elapsed >= 135 && delayedPickup.elapsed < 1000, JSON.stringify(delayedPickup));
     assert.ok(delayedPickup.played >= .1, 'Delayed single pickup actually advances through its first pulse');
-    await page.evaluate(() => { a.prepareBonusMusic(); a.setBonusMusic(true); });
-    await page.waitForFunction(() => a.bonusBgm.currentTime > .1 && !a.bonusBgm.paused);
-    assert.equal(await page.evaluate(() => a.bgm.paused), true);
     const bonusSilence = await page.evaluate(async () => {
       const pickup = a.sfx['pop-1'], before = pickup.currentTime;
       for (let i = 0; i < 40; i++) { a.pop(i, true); a.pop(i); }
@@ -107,17 +104,6 @@ const server = http.createServer((req, res) => {
       return pickup.paused && pickup.currentTime === before && a.activePop === null;
     });
     assert.equal(bonusSilence, true);
-    const position = await page.evaluate(() => { a.setMusicPaused(true); return a.bonusBgm.currentTime; });
-    await page.waitForTimeout(150);
-    assert.equal(await page.evaluate(() => a.bonusBgm.paused && a.bgm.paused), true);
-    await page.evaluate(() => a.setMusicPaused(false));
-    await page.waitForFunction(position => a.bonusBgm.currentTime > position, position);
-    await page.evaluate(() => a.setBackgroundPaused(true));
-    assert.equal(await page.evaluate(() => a.bonusBgm.paused && a.bgm.paused), true);
-    await page.evaluate(() => a.setBackgroundPaused(false));
-    await page.waitForFunction(() => !a.bonusBgm.paused);
-    await page.evaluate(() => a.setBonusMusic(false));
-    await page.waitForFunction(() => a.bonusBgm.paused && !a.bgm.paused);
     // Recording modes use only media mute flags: production UI and preferences stay unchanged.
     for (const [music, effects] of [[true, false], [false, true], [true, true]]) {
       const mode = await page.evaluate(([music, effects]) => {
@@ -139,7 +125,7 @@ const server = http.createServer((req, res) => {
       assert.deepEqual(fs.readdirSync(path.join(root, base, 'public/audio')).sort(),
         fs.readdirSync(path.join(root, 'public/audio')).sort(), 'No obsolete effects remain in generated assets');
     }
-    for (const file of ['js/Audio.js', 'main.js', 'public/ゲームショーのテーマ.wav', ...fs.readdirSync(path.join(root, 'public/audio')).map(x => 'public/audio/' + x)]) {
+    for (const file of ['js/Audio.js', 'main.js', ...fs.readdirSync(path.join(root, 'public/audio')).map(x => 'public/audio/' + x)]) {
       assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(root, 'www', file))));
       assert.ok(fs.readFileSync(path.join(root, file)).equals(fs.readFileSync(path.join(root, 'ios/App/App/public', file))));
     }
