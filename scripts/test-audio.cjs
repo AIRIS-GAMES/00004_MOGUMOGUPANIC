@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 assert.deepEqual(fs.readdirSync(path.join(root, 'public/audio')).sort(),
-  ['button.wav', 'clear.wav', 'suction-1.wav', 'timeup.wav'], 'Only active SFX assets remain');
+  ['button.wav', 'clear.wav', 'roulette-spin.wav', 'roulette-stop.wav', 'suction-1.wav', 'timeup.wav'], 'Only active SFX assets remain');
 let saved = false;
 class Media {
   constructor(src) { this.src = src; this.paused = true; this.log = []; this.ended = false; }
@@ -86,7 +86,7 @@ const AudioSys = vm.runInContext('AudioSys', ctx);
   clock = 1000;
   assert.equal(a.sfx.grow, undefined, 'Growth cue is not loaded');
   assert.equal(a.sfx.vacuum, undefined, 'Vacuum cue is not loaded');
-  assert.equal(Object.keys(a.sfx).length, 4, 'Only four SFX media elements plus music');
+  assert.equal(Object.keys(a.sfx).length, 6, 'Only six SFX media elements (incl. two roulette cues) plus music');
   const beforeDisabled = Object.values(a.sfx).map(media => media.log.length);
   for (let i = 0; i < 100; i++) { a.grow(); a.vacuum(); }
   assert.deepEqual(Object.values(a.sfx).map(media => media.log.length), beforeDisabled, 'Disabled cues perform no media operations');

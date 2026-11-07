@@ -22,9 +22,10 @@ const OUT = process.argv.includes('--test-build')
 const FILES = ['index.html', 'style.css', 'main.js'];
 const DIRS = [
   { from: 'public/fonts', to: 'public/fonts', match: /\.(ttf|txt)$/i },
-  { from: 'public/audio', to: 'public/audio', match: /^(button|clear|timeup|suction-1)\.wav$/i },
+  { from: 'public/audio', to: 'public/audio', match: /^(button|clear|timeup|suction-1|roulette-spin|roulette-stop)\.wav$/i },
   { from: 'js', to: 'js', match: /\.js$/ },
   { from: 'public/opt', to: 'public/opt', match: /\.(webp|png|jpg)$/i },
+  { from: 'public/othergames', to: 'public/othergames', match: /\.jpg$/i },  // ほかのゲームのアイコン
 ];
 // public 直下で個別に必要なBGM
 const PUBLIC_FILES = ['Neon Arcade.mp3', 'star-match-icon.jpg'];

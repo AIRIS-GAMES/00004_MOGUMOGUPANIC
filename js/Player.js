@@ -70,13 +70,29 @@ class Player {
     this.vacuumActive = false;
     this.vacuumTimer = 0;
     this.vacuumDuration = 5 * (skin.vacuumTimeMul || 1);
+
+    // バグルーレットの効果(BugRoulette.BUGS の1つ。null ならバグなし)
+    this.bug = null;
+    this.vx = 0;                 // つるつるバグ用の慣性速度
+    this.vy = 0;
   }
+
+  setBug(bug) {
+    this.bug = bug || null;
+    this.vx = this.vy = 0;
+  }
+
+  /** 体と口の大きさにかかる倍率 */
+  get sizeMul() { return ((this.bug && this.bug.sizeMul) || 1) * (this.feverMul || 1) * (this.powerMul || 1); }
+
+  /** 食べられるかどうかの判定に使うサイズ(おっきくなるバグは大物も食べられる) */
+  get eatScale() { return this.scale + ((this.bug && this.bug.eatBonus) || 0) + (this.feverMul > 1 ? 99 : 0) + (this.powerEat || 0); }
 
   /* ---- 派生パラメータ ---- */
 
   /** 体の当たり判定半径 */
   get bodyR() {
-    return Player.BASE_BODY_R * this.scale;
+    return Player.BASE_BODY_R * this.scale * this.sizeMul;
   }
 
   /** 口の吸い込み判定(mouthRadius)。ピンクは範囲UP、バキューム中は2倍 */
@@ -84,7 +100,7 @@ class Player {
     const vac = this.vacuumActive ? 2 : 1;
     // 初心者補正:scale 1.0 で +25% → 1.5 で 0% に逓減(序盤の空振り軽減)
     const rookie = 1 + 0.25 * Math.max(0, Math.min(1, (1.5 - this.scale) * 2));
-    return ((Player.BASE_MOUTH_R * this.scale * rookie * (this.skin.rangeMul || 1)) * vac + 4) * (this.cosmiiRangeMul || 1);
+    return ((Player.BASE_MOUTH_R * this.scale * this.sizeMul * rookie * (this.skin.rangeMul || 1)) * vac + 4) * (this.cosmiiRangeMul || 1) * (this.mouthBoost || 1);
   }
 
   /** 口の中心(進行方向の少し前) */
@@ -105,7 +121,7 @@ class Player {
   /** 移動速度 [px/s]。水色は速度UP */
   get moveSpeed() {
     const vac = this.vacuumActive ? 1.1 : 1;
-    return 280 * (0.75 + 0.45 * Math.sqrt(this.scale)) * (this.skin.moveMul || 1) * vac;
+    return 280 * (0.75 + 0.45 * Math.sqrt(this.scale)) * (this.skin.moveMul || 1) * vac * ((this.bug && this.bug.speedMul) || 1) * (this.boostMul || 1);
   }
 
   /* ---- 更新 ---- */
@@ -117,22 +133,44 @@ class Player {
   update(input, dt, worldSize, elapsed = dt) {
     this.time += dt;
 
-    // 移動
+    // 移動(こんらんバグは操作の向きが逆)
+    const bug = this.bug;
+    const ix = bug && bug.invert ? -input.dx : input.dx;
+    const iy = bug && bug.invert ? -input.dy : input.dy;
     this.moving = input.active && input.ratio > 0.05;
     if (this.moving) {
-      this.dirX = input.dx;
-      this.dirY = input.dy;
+      this.dirX = ix;
+      this.dirY = iy;
       this.speedRatio = input.ratio;
-      const sp = this.moveSpeed * input.ratio;
-      this.x += this.dirX * sp * dt;
-      this.y += this.dirY * sp * dt;
-      // マップ外に出ない
-      const m = this.bodyR * 0.6;
-      this.x = Math.max(m, Math.min(worldSize - m, this.x));
-      this.y = Math.max(m, Math.min(worldSize - m, this.y));
     } else {
       this.speedRatio = 0;
     }
+    if (bug && bug.slippery) {
+      // つるつるバグ:速度がゆっくりしか変わらず、指を離しても滑り続ける
+      const sp = this.moving ? this.moveSpeed * input.ratio : 0;
+      const k = 1 - Math.pow(0.25, dt);
+      this.vx += (ix * sp - this.vx) * (this.moving ? k : k * 0.35);
+      this.vy += (iy * sp - this.vy) * (this.moving ? k : k * 0.35);
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      const sliding = Math.hypot(this.vx, this.vy);
+      if (!this.moving && sliding > 30) {
+        this.dirX = this.vx / sliding;
+        this.dirY = this.vy / sliding;
+      }
+    } else if (this.moving) {
+      const sp = this.moveSpeed * input.ratio;
+      this.x += this.dirX * sp * dt;
+      this.y += this.dirY * sp * dt;
+    }
+    // マップ外に出ない(壁に当たったら滑りも止める)
+    const m = this.bodyR * 0.6;
+    const cx = Math.max(m, Math.min(worldSize - m, this.x));
+    const cy = Math.max(m, Math.min(worldSize - m, this.y));
+    if (cx !== this.x) this.vx = 0;
+    if (cy !== this.y) this.vy = 0;
+    this.x = cx;
+    this.y = cy;
 
     // 口の開閉:ドラッグ中 or 吸い込み直後は開く
     if (this.mouthHold > 0) this.mouthHold -= dt;
@@ -225,6 +263,8 @@ class Player {
     ctx.translate(this.x, this.y + bob);
     ctx.rotate(tilt);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    // アクセサリー(UFOキャッチャーやずかんでもらえる)
+    if (this.accessory && typeof Accessories !== 'undefined') Accessories.draw(ctx, this.accessory, r, h, { skin: this.skin.id, open: img === this.images.open, w });
     ctx.restore();
   }
 

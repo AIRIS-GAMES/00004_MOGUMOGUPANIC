@@ -50,10 +50,10 @@ const skins = vm.runInContext('SKINS', ctx);
   assert.equal(comboWrites, 0);
   flushCombo();
   assert.equal(comboWrites, 1);
-  assert.equal(comboText, '100 COMBO · SCORE ×14');
+  assert.equal(comboText, '100');
   assert.equal(comboClasses.has('show'), true);
   now += 100; ui.showCombo(14, 101); flushCombo();
-  assert.equal(comboText, '101 COMBO · SCORE ×14');
+  assert.equal(comboText, '101');
   assert.equal(comboClasses.has('show'), true, 'Animation is throttled while text stays current');
   now += 500; ui.showCombo(14, 102); flushCombo();
   assert.equal(comboClasses.has('show-alt'), true, 'Alternate animation restarts without layout');
@@ -166,6 +166,8 @@ const skins = vm.runInContext('SKINS', ctx);
   now = 14000; g._loop(now);
   assert.equal(ended, true); assert.equal(g.timeLeft, 0); assert.equal(suctionAfterTimeout, false);
   g.state = 'play'; ended = false;
+  // 目標到達でクリア後の食べ放題が始まる(ここでは食べ放題を飛ばしてすぐ終了させる)
+  g._startFever = () => g.endGame();
   g.runTimeLimit = 60; g.timeLeft = 42; g.clearTime = null;
   g.score = Game.STAGES[0].targetScore;
   for (const phase of ['bonusEntering', 'bonusActive', 'bonusEnding']) {

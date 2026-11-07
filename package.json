@@ -5,7 +5,7 @@
   "description": "MOGU MOGU PANIC - ハイパーカジュアルゲーム(Web + iOS/Capacitor)",
   "scripts": {
     "serve": "node scripts/serve.cjs",
-    "test": "node scripts/test-audio.cjs && node scripts/test-render.cjs && node scripts/test-core-regressions.cjs && node scripts/test-storage.cjs",
+    "test": "node scripts/test-audio.cjs && node scripts/test-render.cjs && node scripts/test-core-regressions.cjs && node scripts/test-storage.cjs && node scripts/test-retention.cjs && node scripts/test-bugs.cjs",
     "test:browser": "node scripts/test-audio-browser.cjs",
     "capacitor:sync:after": "node scripts/normalize-ios-paths.cjs",
     "build:web": "node scripts/build-web.js",
@@ -13,13 +13,20 @@
     "sync:ios": "node scripts/sync-ios.cjs",
     "sync:ios:normal": "node scripts/sync-ios.cjs",
     "open:ios": "cap open ios",
-    "icons": "capacitor-assets generate --ios --iconBackgroundColor #7ec8e3 --iconBackgroundColorDark #16323d"
+    "icons": "capacitor-assets generate --ios --iconBackgroundColor #7ec8e3 --iconBackgroundColorDark #16323d",
+    "test:retention-browser": "node scripts/test-retention-browser.cjs",
+    "test:gimmicks-browser": "node scripts/test-gimmicks-browser.cjs",
+    "test:features-browser": "node scripts/test-features-browser.cjs",
+    "test:endless-browser": "node scripts/test-endless-browser.cjs",
+    "test:fever-browser": "node scripts/test-fever-browser.cjs",
+    "test:cosmiifever-browser": "node scripts/test-cosmiifever-browser.cjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",
     "@capacitor/browser": "^8.0.3",
     "@capacitor/core": "^8.4.1",
     "@capacitor/ios": "^8.4.1",
+    "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/preferences": "^8.0.1"
   },
   "devDependencies": {

@@ -39,7 +39,7 @@ const server = http.createServer((req, res) => {
       media.forEach((item, i) => { item.play = original[i]; });
       return { names: Object.keys(a.sfx).sort(), starts };
     });
-    assert.deepEqual(simplified, { names: ['button', 'clear', 'pop-1', 'timeup'], starts: 0 });
+    assert.deepEqual(simplified, { names: ['button', 'clear', 'pop-1', 'roulette-spin', 'roulette-stop', 'timeup'], starts: 0 });
     for (const name of await page.evaluate(() => Object.keys(a.sfx))) {
       await page.evaluate(name => a.playSfx(name), name);
       await page.waitForFunction(name => a.sfx[name].currentTime > 0 && !a.sfx[name].error, name);

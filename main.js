@@ -118,10 +118,16 @@
       phase = 'ゲーム';
       const game = new Game(document.getElementById('game'), images, ui, audio, privacy);
       game.showTitle();
+      // Game Center:エンドレスが遊べるようになってからサインイン(新しい人にいきなり出さない)
+      if (Endless.unlocked()) GameCenter.signIn();
+      // カムバック通知:起動時と、アプリを離れるたびに「今から3日後・7日後」で予約し直す
+      const rescheduleNotifications = () => { Notifier.reschedule(game.notifyContext()); };
+      rescheduleNotifications();
       document.addEventListener('visibilitychange', () => {
         audio.setBackgroundPaused(document.hidden, 'visibility');
         Storage.flush();
         if (!document.hidden) game.checkDailyBonus();
+        else rescheduleNotifications();
       });
 
       const appPlugin = window.Capacitor?.Plugins?.App;
@@ -132,6 +138,7 @@
           if (isActive) game.checkDailyBonus();
           else {
             game.pauseGame();
+            rescheduleNotifications();
           }
         });
       }

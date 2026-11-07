@@ -57,4 +57,29 @@ for (const level of [1]) {
   ];
   render('suction-' + level, .14, tones);
 }
-console.log('Generated 4 active mono PCM WAV files, 44.1 kHz / 16 bit, peak <= 0.32.');
+// Bug roulette wheel. Must match BugRoulette.SPIN / TURN_DEG / PEG_DEG and the
+// cubic ease-out in UI.setWheelAngle: one click each time a rim peg passes the
+// pointer. The landing offset is fixed (pegs every 30 deg, segment centres at
+// 45 + 90 i, jitter in 30 deg steps), so the click timing never changes.
+{
+  const SPIN = 2.6, TURN = 1440, PEG = 30;
+  const ticks = [];
+  for (let d = PEG / 2; d < TURN; d += PEG) {
+    const t = SPIN * (1 - Math.cbrt(1 - d / TURN));
+    // Fast early clicks are quieter so the spin-up does not turn into a buzz.
+    const v = .18 + .3 * Math.min(1, t / SPIN * 1.6);
+    ticks.push(['square', 2100, 1500, .018, v, t], ['triangle', 760, 620, .03, v * .8, t]);
+  }
+  render('roulette-spin', SPIN + .05, ticks);
+}
+// Landing: a short glitchy buzz, then a bright "ta-da" arpeggio and chord.
+render('roulette-stop', .9, [
+  ['square', 260, 120, .09, .18],
+  ['triangle', 783.99, 783.99, .09, .35, .07],
+  ['triangle', 1046.5, 1046.5, .09, .35, .14],
+  ['triangle', 1318.51, 1318.51, .1, .35, .21],
+  ['sine', 1046.5, 1046.5, .62, .38, .28],
+  ['sine', 1318.51, 1318.51, .58, .26, .28],
+  ['sine', 1567.98, 1567.98, .55, .22, .28],
+]);
+console.log('Generated 6 active mono PCM WAV files, 44.1 kHz / 16 bit, peak <= 0.32.');

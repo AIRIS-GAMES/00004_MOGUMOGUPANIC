@@ -208,7 +208,7 @@ class CosmiiAbility {
     const x = camera.x + (game.w * 0.82 - game.w / 2) / camera.zoom;
     const y = camera.y + (game.h * 0.36 - game.h / 2) / camera.zoom;
     for (let i = 0; i < count; i++) {
-      let obj = game.spawner.eventPool.find(item => !item.active && !item.rainbowCharge);
+      let obj = game.spawner.eventPool.find(item => !item.active && !item.rainbowCharge && !item.gimmickOwned);
       if (!obj) {
         if (game.spawner.eventPool.filter(item => !item.rainbowCharge).length >= 100) break;
         obj = new GameObject();

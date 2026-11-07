@@ -34,6 +34,8 @@ class Spawner {
       const type = this._chooseType(1);
       const pos = this._randomPos(centerX, centerY, clearRadius);
       obj.reset(type, pos.x, pos.y);
+      // ときどき色違いのレア(ずかん)
+      obj.rare = typeof Zukan !== 'undefined' && Math.random() < Zukan.RARE_CHANCE;
     }
   }
 
@@ -54,6 +56,17 @@ class Spawner {
     obj.state = 'idle';
     if (obj.eventOnly) return;
     this.respawnQueue.push({ t: 1 + Math.random() * 2.5 });
+  }
+
+  /** 街が変わった:画面の外にある普通の物を新しい街の物に入れ替える */
+  retheme(playerScale, camera, viewW, viewH) {
+    const view = camera ? camera.viewBounds(viewW, viewH, 150) : null;
+    for (const obj of this.pool) {
+      if (!obj.active || obj.state !== 'idle' || obj.hazard || obj.gimmick || obj.gimmickOwned || obj.bubble) continue;
+      if (view && obj.x > view.l && obj.x < view.r && obj.y > view.t && obj.y < view.b) continue;
+      obj.reset(this._chooseType(playerScale), obj.x, obj.y);
+      obj.rare = typeof Zukan !== 'undefined' && Math.random() < Zukan.RARE_CHANCE;
+    }
   }
 
   forEachActive(cb) {
@@ -83,6 +96,8 @@ class Spawner {
       if (!view || x < view.l || x > view.r || y < view.t || y > view.b) break;
     }
     obj.reset(type, x, y);
+    // ときどき色違いのレア(ずかん)
+    obj.rare = typeof Zukan !== 'undefined' && Math.random() < Zukan.RARE_CHANCE;
   }
 
   /**

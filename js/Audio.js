@@ -14,7 +14,7 @@ class AudioSys {
     this.musicPending = new Map();
     this.sfx = {};
     // Keep comparison cues unloaded, not merely muted: no extra media starts.
-    const volumes = { button: .55, timeup: .7, clear: .7, 'pop-1': .7 };
+    const volumes = { button: .55, timeup: .7, clear: .7, 'pop-1': .7, 'roulette-spin': .6, 'roulette-stop': .7 };
     for (const [name, volume] of Object.entries(volumes)) {
       const file = name.startsWith('pop-') ? name.replace('pop-', 'suction-') : name;
       const audio = new Audio('public/audio/' + file + '.wav');
@@ -179,6 +179,20 @@ class AudioSys {
       if (index >= 0) this.voices.splice(index, 1);
       this.activePop = null;
     }
+  }
+  /** Bug roulette: one baked file of clicks for the whole spin, then a landing jingle. */
+  rouletteSpin() { this.playSfx('roulette-spin'); }
+  rouletteStop() {
+    this.stopSfx('roulette-spin');
+    this.playSfx('roulette-stop');
+  }
+  stopSfx(name) {
+    const audio = this.sfx[name];
+    if (!audio) return;
+    audio.pause();
+    this.pendingPlays.delete(audio);
+    const index = this.voices.indexOf(audio);
+    if (index >= 0) this.voices.splice(index, 1);
   }
   grow() {} // Temporarily disabled for iPhone audio-stutter comparison.
   button() { this.playSfx('button'); }

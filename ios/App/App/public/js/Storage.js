@@ -20,6 +20,16 @@ class Storage {
     lastClaimAt: 'mogu.lastClaimAt',
     stageBests: 'mogu.stageBests',
     clearTimes: 'mogu.clearTimes',
+    loginStreak: 'mogu.loginStreak',
+    starRewards: 'mogu.starRewards',
+    missions: 'mogu.missions',
+    tutorialDone: 'mogu.tutorialDone',
+    notify: 'mogu.notify',
+    hazardIntro: 'mogu.hazardIntro',
+    zukan: 'mogu.zukan',
+    accessories: 'mogu.accessories',
+    accessoryEquipped: 'mogu.accessoryEquipped',
+    endless: 'mogu.endless',
   };
 
   static cache = new Map();
@@ -220,7 +230,13 @@ class Storage {
     return `${y}-${m}-${d}`;
   }
 
-  static claimDailyBonus(amount) {
+  /**
+   * 連続ログインボーナスの受け取り。
+   * rewards: 1日目〜N日目の報酬配列(数値なら固定額)。
+   * 前日にも受け取っていれば連続日数+1(N日目の次は1日目へ戻る)、途切れたら1日目から。
+   * 戻り値 { total, day, amount } / 受け取り済み・時計巻き戻し時は null
+   */
+  static claimDailyBonus(rewards) {
     const now = Date.now();
     const lastSeenAt = Number(Storage.get(Storage.KEYS.lastSeenAt, 0)) || 0;
     const lastClaimAt = Number(Storage.get(Storage.KEYS.lastClaimAt, 0)) || 0;
@@ -228,11 +244,30 @@ class Storage {
     if (now + rollbackTolerance < lastSeenAt || now < lastClaimAt) return null;
 
     Storage.set(Storage.KEYS.lastSeenAt, Math.max(now, lastSeenAt));
-    const today = Storage.getLocalDateKey();
-    if (Storage.get(Storage.KEYS.lastLoginDate, '') === today) return null;
+    const todayDate = new Date(now);
+    const today = Storage.getLocalDateKey(todayDate);
+    const lastDate = Storage.get(Storage.KEYS.lastLoginDate, '');
+    if (lastDate === today) return null;
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const list = Array.isArray(rewards) ? rewards : [rewards];
+    const previous = Math.max(0, Math.floor(Number(Storage.get(Storage.KEYS.loginStreak, 0)) || 0));
+    const day = lastDate === Storage.getLocalDateKey(yesterdayDate) ? (previous % list.length) + 1 : 1;
+    const amount = Math.max(0, Math.floor(Number(list[day - 1]) || 0));
     Storage.set(Storage.KEYS.lastLoginDate, today);
     Storage.set(Storage.KEYS.lastClaimAt, now);
-    return Storage.addCoins(amount);
+    Storage.set(Storage.KEYS.loginStreak, day);
+    return { total: Storage.addCoins(amount), day, amount };
+  }
+
+  static getLoginStreak() {
+    return Math.max(0, Math.floor(Number(Storage.get(Storage.KEYS.loginStreak, 0)) || 0));
+  }
+
+  /** 汎用オブジェクト保存(壊れた値は fallback に置き換える) */
+  static getObject(key, fallback) {
+    const value = Storage.get(key, null);
+    return value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
   }
 
   static recordCurrentTime() {

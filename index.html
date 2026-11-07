@@ -25,37 +25,67 @@
   </aside>
 
   <div id="hud" class="screen hidden">
-    <div class="hud-top">
-      <div class="hud-stat">
-        <span class="hud-label">SCORE</span>
-        <span class="hud-value" id="hud-score">0</span>
+    <div class="hud-left">
+      <div class="hud-score" aria-label="スコア"><span id="hud-score">0</span></div>
+      <div class="hud-progress" aria-label="クリアまでのスコア">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M6 4h11l-2.5 4L17 12H6Z" fill="#ff6b81" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="hud-progress-bar"><i id="hud-progress-fill"></i><img id="hud-progress-face" class="hud-progress-face" alt=""></div>
+        <span id="hud-target" class="visually-hidden">0</span>
+        <span id="hud-area" class="hud-area" aria-hidden="true"></span>
       </div>
-      <div class="hud-stat">
-        <span class="hud-label">TARGET</span>
-        <span class="hud-value" id="hud-target">0</span>
-      </div>
-      <div class="hud-stat">
-        <span class="hud-label">SIZE</span>
-        <span class="hud-value" id="hud-size">&times;1.00</span>
-      </div>
-      <div class="hud-stat">
-        <span class="hud-label">TIME</span>
-        <span class="hud-value" id="hud-time">60</span>
-      </div>
-      <button id="btn-pause" class="icon-btn" aria-label="pause">&#10074;&#10074;</button>
+      <span id="hud-size" class="visually-hidden">&times;1.00</span>
     </div>
-
+    <div class="hud-right">
+      <div class="hud-time-panel" aria-label="残り時間">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8" fill="#fffaf0" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 13V9.2M12 13l2.6 1.6" fill="none" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 3h5" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span id="hud-time">60</span>
+      </div>
+      <button id="btn-pause" class="round-btn" type="button" aria-label="ポーズ">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="5" width="3.6" height="14" rx="1.6" fill="#4f3a40"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.6" fill="#4f3a40"/></svg>
+        </button>
+    </div>
+    <div class="hud-status" aria-label="ゲージ"></div>
     <div id="combo-pop"></div>
+    <div id="tutorial" class="tutorial hidden" aria-live="polite">
+      <div class="tutorial-hand" aria-hidden="true"><i></i></div>
+      <p id="tutorial-text">指でドラッグして うごかそう</p>
+    </div>
 
     <div id="stage-intro" class="stage-intro hidden" aria-live="polite">
       <span id="stage-intro-number">STAGE 1</span>
       <strong id="stage-intro-name">はじまりの街</strong>
       <p id="stage-intro-story"></p>
+      <div id="stage-intro-gimmick" class="intro-gimmick hidden"><b></b><span></span></div>
     </div>
+    <div id="bug-badge" class="bug-badge hidden" aria-label="発生中のバグ"></div>
+    <div id="fever" class="fever hidden" aria-live="polite">
+      <strong class="fever-title">FEVER!</strong>
+      <div class="fever-bar"><i id="fever-fill"></i></div>
+      <span class="fever-coins"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt="コイン"><em id="fever-coins">0</em></span>
+    </div>
+    <div id="bug-wheel" class="bug-wheel hidden" role="dialog" aria-label="バグルーレット" aria-live="polite">
+      <p class="bug-wheel-title">BUG ROULETTE</p>
+      <div class="wheel-wrap">
+        <svg id="wheel-svg" class="wheel-svg" viewBox="-112 -112 224 224" aria-hidden="true"></svg>
+        <div class="wheel-pointer" aria-hidden="true"></div>
+      </div>
+      <div class="wheel-result"><strong id="wheel-result-name"></strong><span id="wheel-result-desc"></span></div>
+      <p class="wheel-skip">タップでスキップ</p>
+    </div>
+    <div id="gimmick-toast" class="gimmick-toast" aria-live="polite"></div>
+    <div id="zukan-new" class="zukan-new" aria-live="polite"><img alt=""><b class="visually-hidden">ずかんに登録</b></div>
 
+    <div id="fever-choice" class="fever-choice hidden" role="group" aria-label="コスミーフィーバーをえらぶ">
+      <button class="fc-btn fc-dash" type="button" data-kind="dash" aria-label="フリックダッシュ"><i class="fc-tail"></i><i class="fc-speed"></i><img class="fc-face d-main" data-fixed src="public/opt/chara2_sub.webp" alt=""></button>
+      <button class="fc-btn fc-mash" type="button" data-kind="mash" aria-label="連打でふくらむ"><img class="fc-open m-main" data-fixed src="public/opt/red.webp" alt=""><i class="fc-tap t1"></i><i class="fc-tap t2"></i><i class="fc-tap t3"></i></button>
+      <button class="fc-btn fc-clone" type="button" data-kind="clone" aria-label="コスミー分身"><img class="fc-face f2" data-fixed src="public/opt/chara5_sub.webp" alt=""><img class="fc-face f3" data-fixed src="public/opt/chara5_sub.webp" alt=""></button>
+    </div>
+    <div id="mash-layer" class="mash-layer hidden" aria-label="連打"></div>
+    <div id="fever-hint" class="fever-hint hidden" aria-hidden="true"><i class="hint-hand"></i></div>
     <div id="gauge-wrap">
       <div id="gauge-fill"></div>
-      <span id="gauge-label">VACUUM</span>
+      <span id="gauge-label" class="visually-hidden">VACUUM</span>
+      <svg class="gauge-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a3.5 3.5 0 1 0-7 0a5.5 5.5 0 1 0 11 0a7.5 7.5 0 1 0-15 0" fill="none" stroke="#4f3a40" stroke-width="2.4" stroke-linecap="round"/></svg>
     </div>
   </div>
 
@@ -70,28 +100,55 @@
 
   <div id="screen-title" class="screen overlay hidden">
     <h1 class="game-title"><span>MOGU</span> <span>MOGU</span><br><span>PANIC</span></h1>
+    <div class="star-balance" aria-label="獲得した星"><span aria-hidden="true">★</span> <span id="title-stars">0</span><small id="title-stars-max">/30</small></div>
+    <button id="btn-sound" class="round-btn title-sound" type="button" aria-label="サウンド"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4Z" fill="#4f3a40"/><g class="snd-on"><path d="M15 9.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="#4f3a40" stroke-width="2.4" stroke-linecap="round"/><path d="M17.5 7a7 7 0 0 1 0 10" fill="none" stroke="#4f3a40" stroke-width="2.4" stroke-linecap="round"/></g><path class="snd-off" d="M15.5 9.5l5 5m0-5-5 5" fill="none" stroke="#ff5a6e" stroke-width="2.6" stroke-linecap="round"/></svg></button>
     <div class="coin-balance" aria-label="所持コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="title-coins">0</span></div>
-    <p class="title-hint">ドラッグでうごいて エラーをすいこもう！</p>
+    <p class="title-hint">ドラッグでうごいて なんでもすいこもう！</p>
     <div class="menu">
-      <button id="btn-start" class="btn btn-primary">CONTINUE - STAGE 1</button>
-      <button id="btn-stage-select" class="btn">STAGE SELECT</button>
-      <button id="btn-skin" class="btn">SKIN</button>
-      <button id="btn-sound" class="btn">SOUND : ON</button>
-      <a class="cross-promo" href="https://apps.apple.com/jp/app/arcade-heaven-star-match/id6784988703" target="_blank" rel="noopener noreferrer" aria-label="Arcade Heaven Star MatchをApp Storeでダウンロード">
-        <img src="public/star-match-icon.jpg" alt="">
-        <span><small>このキャラクターのパズルゲーム</small><strong>Arcade Heaven Star Match</strong><b>App Storeで見る</b></span>
-        <span class="cross-promo-arrow" aria-hidden="true">&#8250;</span>
-      </a>
+      <button id="btn-start" class="btn btn-primary btn-play">CONTINUE - STAGE 1</button>
+      <button id="btn-endless" class="btn btn-endless" type="button"><span class="endless-mark" aria-hidden="true">∞</span><span class="endless-label">ENDLESS</span><small id="endless-best"></small></button>
       <a class="legal-link" href="https://airis-games.com/privacy-policy/" target="_blank" rel="noopener noreferrer">プライバシーポリシー</a>
     </div>
+    <nav class="title-nav" aria-label="メニュー">
+      <button id="btn-mission" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="9" y="10" width="42" height="48" rx="8" fill="#9fe3c4" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="15" y="18" width="30" height="34" rx="3" fill="#fffaf0" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="21" y="5" width="18" height="10" rx="4" fill="#ff9ec6" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="19" y="23" width="6" height="6" rx="1.5" fill="#8fd14f" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M29 26h11" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="19" y="33" width="6" height="6" rx="1.5" fill="#8fd14f" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M29 36h11" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="19" y="43" width="6" height="6" rx="1.5" fill="#fffaf0" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M29 46h8" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="51.0,40.0 53.8,46.1 60.5,46.9 55.6,51.5 56.9,58.1 51.0,54.8 45.1,58.1 46.4,51.5 41.5,46.9 48.2,46.1" fill="#ffd24d" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round"/></svg><span class="nav-label">ミッション</span><span id="mission-badge" class="notice-dot hidden" aria-label="受け取れる報酬があります"></span></button>
+      <button id="btn-zukan" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 14C16 10 24 10 32 15V55C24 50 16 50 8 54Z" fill="#ffd86b" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M56 14C48 10 40 10 32 15V55C40 50 48 50 56 54Z" fill="#9fe3c4" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="30" r="6" fill="#ff9ec6" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><polygon points="44,22 46.5,28 53,28.5 48,32.5 49.5,39 44,35.5 38.5,39 40,32.5 35,28.5 41.5,28" fill="#fff" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="nav-label">ずかん</span><span id="zukan-badge" class="notice-dot hidden" aria-label="受け取れるごほうびがあります"></span></button>
+      <button id="btn-ufo" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><rect x="10" y="6" width="44" height="52" rx="7" fill="#ff9ec6" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><rect x="16" y="12" width="32" height="30" rx="3" fill="#9be0f7" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M32 13V21" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><ellipse cx="32" cy="23" rx="7" ry="3" fill="#fff" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M27 25 25 30M37 25 39 30" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="24" cy="37" r="4" fill="#ffd24d" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="38" cy="37" r="4" fill="#b9f2c9" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><rect x="18" y="46" width="12" height="7" rx="2" fill="#5a3b3f"/><circle cx="42" cy="49.5" r="3.5" fill="#ff6b81" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="nav-label">UFO</span></button>
+      <button id="btn-skin" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M22 24V18A10 10 0 0 1 42 18V24" fill="none" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="10" y="22" width="44" height="36" rx="8" fill="#ffb3d1" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M16 30v14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+<polygon points="32.0,29.0 35.1,35.7 42.5,36.6 37.0,41.6 38.5,48.9 32.0,45.3 25.5,48.9 27.0,41.6 21.5,36.6 28.9,35.7" fill="#ffd24d" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round"/></svg><span class="nav-label">ショップ</span></button>
+      <button id="btn-howto" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M8 14C16 10 24 10 32 15V55C24 50 16 50 8 54Z" fill="#c9f0ff" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><path d="M56 14C48 10 40 10 32 15V55C40 50 48 50 56 54Z" fill="#ffe08a" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="44" cy="31" r="10" fill="#ff6b81" stroke="#5a3b3f" stroke-width="3"/><path d="M40.5 28a3.6 3.6 0 1 1 5 3.3c-1 .5-1.5 1.2-1.5 2.3" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="44" cy="37.6" r="1.6" fill="#fff"/><path d="M14 24h11M14 31h11M14 38h8" stroke="#5a3b3f" stroke-width="2.5" stroke-linecap="round"/></svg><span class="nav-label">あそびかた</span></button>
+      <button id="btn-games" class="nav-item" type="button"><svg class="nav-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M16 8H48A5 5 0 0 1 53 13V58H11V13A5 5 0 0 1 16 8Z" fill="#c9a7ff" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="18" y="14" width="28" height="19" rx="3" fill="#9be0f7" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polygon points="32.0,16.5 34.0,20.8 38.7,21.3 35.2,24.5 36.1,29.2 32.0,26.9 27.9,29.2 28.8,24.5 25.3,21.3 30.0,20.8" fill="#ffd24d" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round"/>
+<path d="M8 38H56V46A3 3 0 0 1 53 49H11A3 3 0 0 1 8 46Z" fill="#ffd86b" stroke="#5a3b3f" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M20 43V36" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="20" cy="35" r="3.5" fill="#ff6b81" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="38" cy="43" r="2.8" fill="#6cb9ff" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="46" cy="43" r="2.8" fill="#8fd14f" stroke="#5a3b3f" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="nav-label">ゲーム</span></button>
+    </nav>
   </div>
 
-  <div id="screen-stage" class="screen overlay solid hidden">
-    <h2 class="screen-heading">STAGE</h2>
-    <div id="stage-grid"></div>
-    <button id="btn-stage-back" class="btn">BACK</button>
+  <div id="loading-screen" class="loading-screen hidden" aria-live="polite" aria-label="読み込み中">
+    <div class="ld-stage" id="ld-stage">1</div>
+    <div class="ld-row">
+      <img id="ld-cosmii" class="ld-cosmii" alt="">
+      <i class="ld-dot d1"></i><i class="ld-dot d2"></i><i class="ld-dot d3"></i><i class="ld-dot d4"></i>
+    </div>
   </div>
-
+  <div id="screen-stage" class="screen overlay hidden stage-cards-screen">
+    <div class="map-top">
+      <button id="btn-stage-back" class="map-back" type="button" aria-label="もどる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="map-badge map-stars" aria-label="あつめた星"><b>★</b><span id="map-stars">0/60</span></div>
+      <div class="map-badge map-coins" aria-label="コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""><span id="map-coins">0</span></div>
+    </div>
+    <div id="stage-grid" class="card-track"></div>
+    <div id="card-dots" class="card-dots" role="tablist" aria-label="ステージ"></div>
+  </div>
   <div id="screen-skin" class="screen overlay solid hidden">
     <h2 class="screen-heading">SHOP</h2>
     <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="shop-coins">0</span></div>
@@ -105,41 +162,105 @@
     <button id="btn-skin-back" class="btn">BACK</button>
   </div>
 
+  <div id="screen-zukan" class="screen overlay solid hidden">
+    <h2 class="screen-heading">ずかん</h2>
+    <div id="zukan-tabs" class="zukan-tabs" role="tablist"></div>
+    <div id="zukan-page" class="zukan-page"></div>
+    <button id="btn-zukan-back" class="btn">BACK</button>
+  </div>
+  <div id="screen-ufo" class="screen overlay solid hidden">
+    <h2 class="ufo-title" aria-label="UFOキャッチャー"><span>UFO</span><small>キャッチャー</small></h2>
+    <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="ufo-coins">0</span></div>
+    <div class="ufo-cabinet">
+      <div class="ufo-machine"><canvas id="ufo-canvas" width="640" height="720" aria-label="UFOキャッチャーの台"></canvas></div>
+      <div class="ufo-panel">
+        <div class="ufo-price" aria-label="1回100コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""><b>100</b></div>
+        <button id="btn-ufo-play" class="ufo-play" type="button" aria-label="長押しでアームを動かす">
+          <span class="ufo-play-dome"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 24h21M23 13l11 11-11 11" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </button>
+      </div>
+    </div>
+    <div class="ufo-tray">
+      <div id="ufo-owned" class="ufo-owned" aria-label="もっているアクセサリー"></div>
+    </div>
+    <button id="btn-ufo-back" class="btn">BACK</button>
+  </div>
+  <div id="screen-mission" class="screen overlay solid hidden">
+    <h2 class="screen-heading">MISSION</h2>
+    <p class="mission-sub">毎日3つ。夜0時に新しいミッションになるよ</p>
+    <div id="mission-list" class="mission-list"></div>
+    <button id="btn-mission-back" class="btn">BACK</button>
+  </div>
   <div id="screen-boost" class="screen overlay solid hidden">
-    <h2 class="screen-heading">BOOST</h2>
-    <p id="boost-stage-name" class="boost-stage-name">STAGE 1</p>
-    <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="boost-coins">0</span></div>
+    <div class="boost-top">
+      <button id="btn-boost-back" class="round-btn boost-back" type="button" aria-label="もどる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <p id="boost-stage-name" class="boost-stage-name">STAGE 1</p>
+      <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="boost-coins">0</span></div>
+    </div>
+    <div id="boost-hero" class="boost-hero" aria-hidden="true">
+      <i class="bh-ring"></i><i class="bh-shield"></i>
+      <img class="bh-face" alt="">
+      <i class="bh-clock"></i><i class="bh-star"></i><i class="bh-nobug"></i>
+    </div>
+    <h2 class="boost-heading">ブースト</h2>
     <div id="boost-grid"></div>
-    <div class="boost-total">TOTAL <strong id="boost-total">0</strong></div>
+    <div class="boost-total"><span>ごうけい</span><span><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <strong id="boost-total">0</strong></span></div>
     <button id="btn-boost-start" class="btn btn-primary">START</button>
-    <button id="btn-boost-back" class="btn">BACK</button>
+  </div>
+
+  <div id="howto" class="howto hidden" role="dialog" aria-label="あそびかた">
+    <div class="howto-head"><h2>あそびかた</h2><button class="round-btn howto-close" type="button" aria-label="とじる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#4f3a40" stroke-width="3" stroke-linecap="round"/></svg></button></div>
+    <div class="howto-tabs"></div>
+    <div class="howto-body"></div>
+  </div>
+
+  <div id="games" class="howto games hidden" role="dialog" aria-label="ほかのゲーム">
+    <div class="howto-head"><h2>ほかのゲーム</h2><button class="round-btn howto-close games-close" type="button" aria-label="とじる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="#4f3a40" stroke-width="3" stroke-linecap="round"/></svg></button></div>
+    <p class="games-lead">コスミーのなかまのゲーム。タップでダウンロードページへ</p>
+    <div class="howto-body games-list"></div>
   </div>
 
   <div id="screen-pause" class="screen overlay hidden">
     <div class="panel">
       <h2 class="screen-heading">PAUSE</h2>
       <button id="btn-resume" class="btn btn-primary">RESUME</button>
+      <button id="btn-hud-sound" class="btn" type="button">SOUND : ON</button>
+      <button id="btn-pause-howto" class="btn" type="button">あそびかた</button>
       <button id="btn-pause-home" class="btn">HOME</button>
     </div>
   </div>
 
   <div id="screen-result" class="screen overlay hidden">
-    <div class="panel">
-      <h2 class="screen-heading" id="res-title">TIME UP!</h2>
-      <div id="res-reward" class="reward-badge hidden">+0 COINS</div>
-      <div id="res-new" class="new-badge hidden">NEW RECORD!</div>
-      <p id="res-story" class="result-story"></p>
-      <dl class="result-list">
-        <div><dt>CLEAR TIME</dt><dd id="res-clear-time">—</dd></div>
-        <div><dt id="res-best-time-label">BEST TIME</dt><dd id="res-best-time">—</dd></div>
-        <div><dt>SCORE</dt><dd id="res-score">0</dd></div>
-        <div><dt>BEST</dt><dd id="res-best">0</dd></div>
-        <div><dt>EATEN</dt><dd id="res-count">0</dd></div>
-        <div><dt>MAX SIZE</dt><dd id="res-size">&times;1.00</dd></div>
-      </dl>
-      <button id="btn-next-stage" class="btn btn-primary hidden">NEXT STAGE</button>
-      <button id="btn-again" class="btn">PLAY AGAIN</button>
-      <button id="btn-result-home" class="btn">HOME</button>
+    <div class="panel result-card">
+      <div class="res-head">
+        <img id="res-cosmii" class="res-cosmii" alt="">
+      </div>
+      <p id="res-story" class="res-bubble hidden"></p>
+      <h2 class="res-title" id="res-title">CLEAR!</h2>
+      <div id="res-stars" class="result-stars" aria-label="評価"><span>★</span><span>★</span><span>★</span></div>
+      <div id="res-area" class="res-area hidden"></div>
+      <div class="res-hero">
+        <strong id="res-hero">0.00s</strong>
+        <span id="res-new" class="res-new hidden" aria-label="新記録">NEW!</span>
+      </div>
+      <div class="res-sub" id="res-sub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v3a7 7 0 0 1-14 0Z M12 15v3M8 21h8" fill="#ffd24d" stroke="#4f3a40" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg><b id="res-best">0</b></div>
+      <div id="res-progress" class="res-progress hidden" aria-label="目標までの進み具合"><div class="res-progress-bar"><i id="res-progress-fill"></i><img id="res-progress-face" alt=""></div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4" stroke="#4f3a40" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M6 4h11l-2.5 4L17 12H6Z" fill="#ff6b81" stroke="#4f3a40" stroke-width="3" stroke-linejoin="round"/></svg></div>
+      <div id="res-reward" class="res-reward hidden">+0</div>
+      <div id="res-star-hint" class="res-chips hidden"></div>
+      <div id="res-mission" class="res-mission hidden" role="status"></div>
+      <div class="res-stats">
+        <span aria-label="スコア"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" fill="#ffd24d" stroke="#4f3a40" stroke-width="2" stroke-linejoin="round"/></svg><b id="res-score">0</b></span>
+        <span aria-label="食べた数"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#ff6b81" stroke="#4f3a40" stroke-width="2"/><path d="M7.5 12.5a4.5 4 0 0 0 9 0Z" fill="#5a2430" stroke="#4f3a40" stroke-width="1.6" stroke-linejoin="round"/><circle cx="9" cy="9" r="1.3" fill="#4f3a40"/><circle cx="15" cy="9" r="1.3" fill="#4f3a40"/></svg><b id="res-count">0</b></span>
+      </div>
+      <div class="visually-hidden">
+        <span id="res-clear-time"></span><span id="res-best-time"></span><span id="res-best-time-label"></span><span id="res-size"></span><span id="res-bug"></span>
+      </div>
+      <div class="res-actions">
+        <button id="btn-result-home" class="res-round" type="button" aria-label="ホーム"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 5l8 6.5M6.5 10v9h11v-9" fill="none" stroke="#4f3a40" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 19v-4.5h4V19" fill="#ffd24d" stroke="#4f3a40" stroke-width="2.4" stroke-linejoin="round"/></svg></button>
+        <button id="btn-ranking" class="res-round hidden" type="button" aria-label="ランキング"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0Z" fill="#ffd24d" stroke="#4f3a40" stroke-width="2.4" stroke-linejoin="round"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8 20h8" fill="none" stroke="#4f3a40" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button id="btn-again" class="res-round" type="button" aria-label="もう一回"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12a7 7 0 1 1-2.05-4.95M19 4v4.5h-4.5" fill="none" stroke="#4f3a40" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="res-btn-label">もう一回</span></button>
+        <button id="btn-next-stage" class="btn btn-primary res-next hidden" type="button">NEXT<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l9 7-9 7Z" fill="#fff"/></svg></button>
+      </div>
     </div>
   </div>
 
@@ -147,17 +268,41 @@
     <div class="panel bonus-panel">
       <img class="bonus-coin" src="public/opt/cosmo-coin.webp" alt="コスモコイン">
       <h2 class="screen-heading">LOGIN BONUS</h2>
-      <p>今日のボーナス</p>
+      <p id="login-bonus-day">連続ログイン 1日目</p>
+      <ol id="login-streak" class="streak-row" aria-label="7日間のボーナス"></ol>
       <strong id="login-bonus-amount">+100 COINS</strong>
+      <p id="login-bonus-next" class="streak-next"></p>
       <button id="btn-login-bonus" class="btn btn-primary">GET!</button>
     </div>
   </div>
 
+  <div id="notify-prompt" class="screen overlay bonus-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="notify-title">
+    <div class="panel bonus-panel notify-panel">
+      <img class="notify-chara" src="public/opt/chara1_sub.webp" alt="">
+      <h2 id="notify-title" class="notify-title">コスミーからの<br>おしらせを受け取る？</h2>
+      <p>しばらく遊んでいないときだけ、夜22時ごろにおしらせが届きます。</p>
+      <button id="btn-notify-accept" class="btn btn-primary">受け取る</button>
+      <button id="btn-notify-later" class="btn btn-ghost">今はしない</button>
+    </div>
+  </div>
 </div>
 
 <script src="js/GameAnalytics.min.js"></script>
 <script src="js/Analytics.js"></script>
 <script src="js/Storage.js"></script>
+<script src="js/Retention.js"></script>
+<script src="js/Notifications.js"></script>
+<script src="js/BugRoulette.js"></script>
+<script src="js/StageGimmicks.js"></script>
+<script src="js/StageCards.js"></script>
+<script src="js/Hazards.js"></script>
+<script src="js/Warps.js"></script>
+<script src="js/CourseFeatures.js"></script>
+<script src="js/Accessories.js"></script>
+<script src="js/Zukan.js"></script>
+<script src="js/UfoCatcher.js"></script>
+<script src="js/Endless.js"></script>
+<script src="js/GameCenter.js"></script>
 <script src="js/Audio.js"></script>
 <script src="js/Object.js"></script>
 <script src="js/Spawner.js"></script>
@@ -165,6 +310,9 @@
 <script src="js/Player.js"></script>
 <script src="js/UI.js"></script>
 <script src="js/CosmiiAbility.js"></script>
+<script src="js/CosmiiFever.js"></script>
+<script src="js/HowTo.js"></script>
+<script src="js/OtherGames.js"></script>
 <script src="js/Game.js"></script>
 <script src="main.js"></script>
 </body>

@@ -32,6 +32,14 @@ const OBJECT_TYPES = [
   { id: 'tower', r: 100, req: 8, score: 350, weight: 0.8 },
 ];
 
+/** ステージギミック専用の物(通常の出現抽選には入らない) */
+const GIMMICK_TYPES = {
+  clock: { id: 'clock', r: 22, req: 1, score: 30, weight: 0 },
+  zapper: { id: 'zapper', r: 24, req: 1, score: 0, weight: 0 },
+  chili: { id: 'chili', r: 24, req: 1, score: 0, weight: 0 },
+  soda: { id: 'soda', r: 26, req: 1, score: 0, weight: 0 },
+};
+
 /* ---------------------------------------------------------
  * 各オブジェクトのベクター描画関数
  * 座標系:中心(0,0)、u = 当たり判定半径(この円に収まるように描く)
@@ -317,6 +325,121 @@ const OBJECT_PAINTERS = {
     }
   },
 
+  /** 吸い込んではいけない「ビリビリ」 */
+  zapper(g, u) {
+    this._dot(g, 0, 0, u * 0.98, '#2a2233');
+    this._dot(g, 0, 0, u * 0.82, '#5b3f7a');
+    // 黄色と黒の警告リング
+    g.save();
+    g.beginPath(); g.arc(0, 0, u * 0.82, 0, Math.PI * 2); g.clip();
+    g.strokeStyle = '#ffd24d';
+    g.lineWidth = u * 0.16;
+    for (let i = -4; i <= 4; i++) {
+      g.beginPath();
+      g.moveTo(i * u * 0.32 - u, -u);
+      g.lineTo(i * u * 0.32 + u, u);
+      g.stroke();
+    }
+    g.restore();
+    this._dot(g, 0, 0, u * 0.6, '#3b2f4a');
+    // 稲妻
+    g.fillStyle = '#ffe14d';
+    g.strokeStyle = '#2a2233';
+    g.lineWidth = u * 0.08;
+    g.beginPath();
+    g.moveTo(u * 0.12, -u * 0.5);
+    g.lineTo(-u * 0.28, u * 0.06);
+    g.lineTo(-u * 0.02, u * 0.06);
+    g.lineTo(-u * 0.14, u * 0.5);
+    g.lineTo(u * 0.3, -u * 0.08);
+    g.lineTo(u * 0.04, -u * 0.08);
+    g.closePath();
+    g.fill(); g.stroke();
+  },
+
+  /** 吸い込んではいけない「激辛とうがらし」 */
+  chili(g, u) {
+    g.save();
+    g.rotate(-0.5);
+    g.lineJoin = 'round';
+    g.strokeStyle = '#5a2a2a';
+    g.lineWidth = u * 0.1;
+    // 実
+    g.fillStyle = '#ff3b3b';
+    g.beginPath();
+    g.moveTo(-u * 0.25, -u * 0.55);
+    g.quadraticCurveTo(u * 0.55, -u * 0.5, u * 0.35, u * 0.25);
+    g.quadraticCurveTo(u * 0.15, u * 0.85, -u * 0.05, u * 0.98);
+    g.quadraticCurveTo(-u * 0.55, u * 0.2, -u * 0.25, -u * 0.55);
+    g.closePath();
+    g.fill(); g.stroke();
+    // つや
+    g.strokeStyle = 'rgba(255,255,255,0.7)';
+    g.lineWidth = u * 0.1;
+    g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-u * 0.1, -u * 0.3); g.quadraticCurveTo(-u * 0.25, u * 0.15, -u * 0.08, u * 0.5); g.stroke();
+    // ヘタ
+    g.fillStyle = '#4caf50';
+    g.strokeStyle = '#2e5a2e';
+    g.lineWidth = u * 0.08;
+    g.beginPath();
+    g.ellipse(0, -u * 0.6, u * 0.36, u * 0.16, 0.1, 0, Math.PI * 2);
+    g.fill(); g.stroke();
+    g.lineWidth = u * 0.12;
+    g.strokeStyle = '#3e8e41';
+    g.beginPath(); g.moveTo(0.02 * u, -u * 0.7); g.quadraticCurveTo(u * 0.1, -u * 0.95, u * 0.32, -u * 0.95); g.stroke();
+    g.restore();
+  },
+
+  /** 吸い込んではいけない「炭酸ボトル」 */
+  soda(g, u) {
+    g.lineJoin = 'round';
+    g.strokeStyle = '#2f4f5a';
+    g.lineWidth = u * 0.08;
+    // ボトル
+    g.fillStyle = '#7fe0ef';
+    g.beginPath();
+    g.moveTo(-u * 0.16, -u * 0.72);
+    g.lineTo(u * 0.16, -u * 0.72);
+    g.lineTo(u * 0.16, -u * 0.5);
+    g.quadraticCurveTo(u * 0.48, -u * 0.38, u * 0.48, -u * 0.05);
+    g.lineTo(u * 0.48, u * 0.82);
+    g.quadraticCurveTo(u * 0.48, u * 0.98, u * 0.3, u * 0.98);
+    g.lineTo(-u * 0.3, u * 0.98);
+    g.quadraticCurveTo(-u * 0.48, u * 0.98, -u * 0.48, u * 0.82);
+    g.lineTo(-u * 0.48, -u * 0.05);
+    g.quadraticCurveTo(-u * 0.48, -u * 0.38, -u * 0.16, -u * 0.5);
+    g.closePath();
+    g.fill(); g.stroke();
+    // ラベル
+    g.fillStyle = '#ff6b9d';
+    g.fillRect(-u * 0.46, u * 0.12, u * 0.92, u * 0.34);
+    g.strokeRect(-u * 0.46, u * 0.12, u * 0.92, u * 0.34);
+    // キャップ
+    g.fillStyle = '#ff4f6d';
+    g.beginPath();
+    g.roundRect ? g.roundRect(-u * 0.22, -u * 0.92, u * 0.44, u * 0.24, u * 0.06) : g.rect(-u * 0.22, -u * 0.92, u * 0.44, u * 0.24);
+    g.fill(); g.stroke();
+    // 中の泡
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    for (const [x, y, r] of [[-0.2, -0.1, 0.07], [0.15, -0.25, 0.05], [0.05, 0.65, 0.06], [-0.22, 0.62, 0.04], [0.25, 0.7, 0.05]]) {
+      this._dot(g, x * u, y * u, r * u, 'rgba(255,255,255,0.85)');
+    }
+  },
+
+  /** 5面:逃げる時計 */
+  clock(g, u) {
+    this._dot(g, 0, 0, u * 0.95, '#5a3b3f');
+    this._dot(g, 0, 0, u * 0.8, '#fffaf0');
+    for (const side of [-1, 1]) this._dot(g, side * u * 0.62, -u * 0.78, u * 0.26, '#ff6b81');
+    g.strokeStyle = '#5a3b3f';
+    g.lineCap = 'round';
+    g.lineWidth = u * 0.14;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -u * 0.5); g.stroke();
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(u * 0.36, u * 0.14); g.stroke();
+    this._dot(g, 0, 0, u * 0.1, '#ff6b81');
+  },
+
   rainbowToken(g, u) {
     const colors = ['#ff627f', '#ffa447', '#ffe45e', '#68dca1', '#55cde7', '#6994ff', '#ad80ef', '#ef82cb'];
     g.lineWidth = u * 0.15;
@@ -340,6 +463,29 @@ const OBJECT_PAINTERS = {
 class GameObject {
   /** ベイク済みスプライトのキャッシュ(種類ごとに1枚) */
   static spriteCache = new Map();
+
+  /** 画面上の1px あたりの倍率(Game が毎フレーム入れる:解像度×カメラのズーム) */
+  static pixelScale = 2;
+
+  /** 画面に映る大きさに合った解像度の絵(1/2, 1/4 を作って覚えておく) */
+  static lod(sprite, screenPx) {
+    const full = sprite.canvas;
+    if (screenPx >= full.width * 0.45) return full;
+    const level = screenPx >= full.width * 0.2 ? 1 : 2;
+    sprite.mips = sprite.mips || [];
+    let c = sprite.mips[level];
+    if (!c) {
+      const prev = level === 1 ? full : GameObject.lod(sprite, full.width * 0.3);
+      c = document.createElement('canvas');
+      c.width = Math.max(4, Math.round(prev.width / 2));
+      c.height = Math.max(4, Math.round(prev.height / 2));
+      const g = c.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(prev, 0, 0, c.width, c.height);
+      sprite.mips[level] = c;
+    }
+    return c;
+  }
 
   static getSprite(type) {
     let sprite = GameObject.spriteCache.get(type.id);
@@ -401,20 +547,60 @@ class GameObject {
     this.state = 'idle';
     this.suckStartDist = 1;
     this.wobble = 0;
+    this.flipX = false;  // 左向きに描く(走る車など)
+    this.gimmick = null; // ステージギミックが付ける状態(走行・光る など)
+    this.hazard = false; // 吸い込んではいけない物の種類(zapper / chili / soda)
+    this.fly = null;     // 吐き出されて飛んでいる途中
+    this.burnt = false;  // とうがらしの火で焦げた(食べるとスコアが減る)
+    this.bubble = null;  // シャボン玉に閉じ込められている(割るまで食べられない)
+    this.rare = false;   // 色違いのレア(ずかん)
+    this.noSuck = 0;     // しばらく吸い込めない(吐き出した直後)
+    this.sizeMul = 1;    // 当たり判定の大きさの倍率(巨大エラー用)
   }
 
-  get r() { return this.type.r; }
+  get r() { return this.type.r * (this.sizeMul || 1); }  // 巨大エラーなどは大きさが変わる
+
+  /** 焦げた見た目(元の絵を黒っぽく塗り重ねたもの)。種類ごとに1回だけ作る */
+  static getBurntSprite(type) {
+    const key = `${type.id}:burnt`;
+    let sprite = GameObject.spriteCache.get(key);
+    if (sprite) return sprite;
+    const base = GameObject.getSprite(type);
+    const c = document.createElement('canvas');
+    c.width = base.canvas.width;
+    c.height = base.canvas.height;
+    const g = c.getContext('2d');
+    g.drawImage(base.canvas, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(45, 28, 22, 0.72)';
+    g.fillRect(0, 0, c.width, c.height);
+    // こげ跡のまだら
+    g.fillStyle = 'rgba(15, 8, 6, 0.55)';
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      g.arc(c.width * (0.3 + ((i * 37) % 40) / 100), c.height * (0.25 + ((i * 53) % 45) / 100), c.width * 0.07, 0, Math.PI * 2);
+      g.fill();
+    }
+    sprite = { canvas: c, drawSize: base.drawSize };
+    GameObject.spriteCache.set(key, sprite);
+    return sprite;
+  }
 
   draw(ctx) {
-    const sprite = GameObject.getSprite(this.type);
+    const sprite = this.burnt ? GameObject.getBurntSprite(this.type)
+      : this.rare && typeof Zukan !== 'undefined' ? Zukan.rareSprite(this.type)
+      : GameObject.getSprite(this.type);
     const size = sprite.drawSize * this.drawScale;
+    // 引いて小さく映る時は、小さく作り直した絵を使う(大きな絵を毎回縮めるのは重い)
+    const src = GameObject.lod(sprite, size * GameObject.pixelScale);
     // 押し返された時にプルプル揺れる
     const wobbleRot = this.wobble > 0 ? Math.sin(this.wobble * 40) * 0.18 : 0;
     ctx.save();
     ctx.globalAlpha *= this.drawAlpha;
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot + wobbleRot);
-    ctx.drawImage(sprite.canvas, -size / 2, -size / 2, size, size);
+    if (this.flipX) ctx.scale(-1, 1);
+    ctx.drawImage(src, -size / 2, -size / 2, size, size);
     ctx.restore();
   }
 }
