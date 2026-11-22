@@ -618,31 +618,31 @@ class UI {
     this.el.ufoPlay.classList.toggle('is-ready', canPlay);
   }
 
-  buildUfoOwned(onEquip) {
-    const owned = Accessories.owned();
+  /**
+   * 景品の棚:UFOの景品8つを全部並べる。持っていない物はシルエット、持っている物はタップでつける。
+   * ずかんでもらった特別なアクセサリーも、持っていれば後ろに並べる
+   */
+  buildUfoOwned(onEquip, newId = null) {
+    const owned = new Set(Accessories.owned());
     const equipped = Accessories.equipped();
+    const ufoList = Accessories.LIST.filter(a => a.source === 'ufo');
+    const extra = Accessories.LIST.filter(a => a.source !== 'ufo' && owned.has(a.id));
     const box = this.el.ufoOwned;
     box.innerHTML = '';
-    if (!owned.length) {
-      box.innerHTML = '<p class="ufo-empty">とったアクセサリーがここに並ぶよ</p>';
-      return;
+    for (const acc of [...ufoList, ...extra]) {
+      const has = owned.has(acc.id);
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = `ufo-item${has ? '' : ' locked'}${acc.id === equipped ? ' on' : ''}${(typeof UfoCatcher !== 'undefined' && UfoCatcher.RARE.includes(acc.id)) || acc.source !== 'ufo' ? ' rare' : ''}${acc.id === newId ? ' new' : ''}`;
+      cell.setAttribute('aria-label', has ? `${acc.name}${acc.id === equipped ? '(つけている)' : ''}` : 'まだ持っていない景品');
+      cell.innerHTML = `<img src="${Accessories.icon(acc.id, 64)}" alt="">`;
+      if (has) cell.addEventListener('click', () => onEquip(acc.id));
+      box.append(cell);
     }
-    const none = document.createElement('button');
-    none.type = 'button';
-    none.className = `acc-chip${equipped ? '' : ' on'}`;
-    none.textContent = 'なし';
-    none.addEventListener('click', () => onEquip(null));
-    box.append(none);
-    for (const id of owned) {
-      const acc = Accessories.get(id);
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = `acc-chip${id === equipped ? ' on' : ''}`;
-      chip.setAttribute('aria-label', `${acc.name}${id === equipped ? '(つけている)' : ''}`);
-      chip.innerHTML = `<img src="${Accessories.icon(id, 64)}" alt="">`;
-      chip.addEventListener('click', () => onEquip(id));
-      box.append(chip);
-    }
+    const count = document.getElementById('ufo-count');
+    if (count) count.textContent = `${ufoList.filter(a => owned.has(a.id)).length}/${ufoList.length}`;
+    const off = document.getElementById('btn-ufo-unequip');
+    if (off) { off.disabled = !equipped; off.onclick = () => onEquip(null); }
   }
 
   /* ---- 通知の説明ダイアログ ---- */
@@ -652,7 +652,7 @@ class UI {
 
   /* ---- HUD ---- */
 
-  updateHUD(score, size, timeLeft, targetScore = 0, label = '') {
+  updateHUD(score, size, timeLeft, targetScore = 0, label = '', progress = null) {
     const scoreText = score.toLocaleString();
     const sizeText = `×${size.toFixed(2)}`;
     if (this.el.score.textContent !== scoreText) this.el.score.textContent = scoreText;
@@ -665,19 +665,19 @@ class UI {
       this.el.time.classList.toggle('warn', warn);
       this.el.time.parentElement?.classList?.toggle('warn', warn);
     }
-    const left = `あと ${Math.max(0, targetScore - score).toLocaleString()}`;
+    const left = isFinite(targetScore) ? `あと ${Math.max(0, targetScore - score).toLocaleString()}` : '';
     // エンドレスのエリア番号だけは数字で見せる(それ以外の文字は出さない)
     const areaText = label ? label.replace('AREA ', '') : '';
     const areaEl = this.el.hudArea;
     if (areaEl && areaEl.textContent !== areaText) areaEl.textContent = areaText;
-    const targetText = label ? `${label}  ${left}` : (score >= targetScore && targetScore > 0 ? 'CLEAR!' : left);
+    const targetText = label ? `${label}  ${left}`.trim() : (score >= targetScore && targetScore > 0 ? 'CLEAR!' : left);
     if (this.el.target.textContent !== targetText) {
       this.el.target.textContent = targetText;
       this.el.target.parentElement?.classList?.toggle('is-clear', targetText === 'CLEAR!');
     }
     // 目標までの進み具合バー(1% 単位で変わった時だけ書く)
     if (this.el.progressFill) {
-      const pct = targetScore > 0 ? Math.min(100, Math.floor(score / targetScore * 100)) : 0;
+      const pct = progress !== null ? Math.floor(progress * 100) : targetScore > 0 && isFinite(targetScore) ? Math.min(100, Math.floor(score / targetScore * 100)) : 0;
       if (pct !== this.lastProgress) {
         this.lastProgress = pct;
         this.el.progressFill.style.width = `${pct}%`;
@@ -734,6 +734,37 @@ class UI {
   }
 
   /** クリア後の食べ放題 */
+  /** クリアの瞬間の「STAGE CLEAR!」と紙吹雪。instant で即消す */
+  showClearBanner(on, instant = false) {
+    const el = document.getElementById('clear-banner');
+    if (!el) return;
+    clearTimeout(this._clearBannerTimer);
+    if (on) {
+      const colors = ['#ff6b81', '#ffd24d', '#6cb9ff', '#8fd14f', '#c89bff', '#ffffff'];
+      let html = '<strong>STAGE<br>CLEAR!</strong>';
+      for (let i = 0; i < 28; i++) {
+        const x = (i / 28) * 100 + Math.random() * 3;
+        html += `<i style="--x:${x.toFixed(1)}%;--c:${colors[i % colors.length]};--d:${(1.2 + Math.random() * 0.8).toFixed(2)}s;--w:${(Math.random() * 0.35).toFixed(2)}s;--r:${Math.round(360 + Math.random() * 540) * (i % 2 ? 1 : -1)}deg;--s:${(0.7 + Math.random() * 0.6).toFixed(2)}"></i>`;
+      }
+      el.innerHTML = html;
+      el.classList.remove('hidden', 'out');
+      return;
+    }
+    if (instant || el.classList.contains('hidden')) { el.classList.add('hidden'); el.classList.remove('out'); el.innerHTML = ''; return; }
+    // 文字だけ先に消えて、紙吹雪は降り終わるまで残る
+    el.classList.add('out');
+    this._clearBannerTimer = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('out'); el.innerHTML = ''; }, 1500);
+  }
+
+  /** 画面をふわっと白くする(フィーバー → リザルトのつなぎ) */
+  flashWhite() {
+    const el = document.getElementById('white-flash');
+    if (!el) return;
+    el.classList.remove('go');
+    void el.offsetWidth;
+    el.classList.add('go');
+  }
+
   showFever(on) {
     const el = document.getElementById('fever');
     if (!el) return;

@@ -18,6 +18,8 @@ class HazardField {
   // 歩き回る速さ(px/秒)と、置かれた場所から離れる最大距離
   static WALK = { zapper: 42, chili: 55, soda: 34 };
   static LEASH = 140;
+  static GROW = 0.22;     // プレイヤーの大きさ1ごとに危険物が大きくなる割合
+  static MAX_GROW = 2.8;
   static WEIGHT = { zapper: 2, chili: 1, soda: 1 };
   static PATTERNS = ['scatter', 'clusters', 'rows'];
 
@@ -249,10 +251,16 @@ class HazardField {
    * 危険物は置かれた場所のまわりをうろうろ歩く。
    * ビリビリはカクカク、とうがらしはぴょこぴょこ、炭酸はゆらゆら。
    */
+  /** 危険物の大きさ。プレイヤーが大きくなるとついて大きくなり、見落とさないようにする */
+  static sizeFor(scale) { return Math.min(HazardField.MAX_GROW, 1 + Math.max(0, scale - 1) * HazardField.GROW); }
+
   _walk(dt) {
     const W = Game.WORLD;
+    const hs = HazardField.sizeFor(this.game.player ? this.game.player.scale : 1);
     for (const obj of this.items) {
       if (!obj.active || obj.state !== 'idle') continue;
+      obj.sizeMul = hs;
+      if (obj.noSuck > 0) obj.noSuck -= dt;  // 分身に押しのけられた直後
       const t = this.time + obj.phase;
       // 向きを少しずつ変える。離れすぎたら家の方へ戻る
       obj.walkA += (Math.sin(t * 0.9) * 0.9 + (Math.random() - 0.5) * 0.8) * dt;
@@ -269,8 +277,9 @@ class HazardField {
       obj.x = Math.max(80, Math.min(W - 80, obj.x + Math.cos(obj.walkA) * speed * dt));
       obj.y = Math.max(80, Math.min(W - 80, obj.y + Math.sin(obj.walkA) * speed * dt));
       // 歩いている見た目
+      obj.drawScale = hs;
       if (obj.hazard === 'zapper') obj.rot = (Math.floor(t * 12) % 2 ? 0.08 : -0.08);
-      else if (obj.hazard === 'chili') { obj.rot = Math.sin(t * 7) * 0.18; obj.drawScale = 1 + Math.max(0, Math.sin(t * 7)) * 0.08; }
+      else if (obj.hazard === 'chili') { obj.rot = Math.sin(t * 7) * 0.18; obj.drawScale = hs * (1 + Math.max(0, Math.sin(t * 7)) * 0.08); }
       else obj.rot = Math.sin(t * 3) * 0.14;
     }
   }

@@ -58,6 +58,7 @@
       <div id="stage-intro-gimmick" class="intro-gimmick hidden"><b></b><span></span></div>
     </div>
     <div id="bug-badge" class="bug-badge hidden" aria-label="発生中のバグ"></div>
+    <div id="clear-banner" class="clear-banner hidden" aria-live="polite"></div>
     <div id="fever" class="fever hidden" aria-live="polite">
       <strong class="fever-title">FEVER!</strong>
       <div class="fever-bar"><i id="fever-fill"></i></div>
@@ -169,21 +170,33 @@
     <button id="btn-zukan-back" class="btn">BACK</button>
   </div>
   <div id="screen-ufo" class="screen overlay solid hidden">
-    <h2 class="ufo-title" aria-label="UFOキャッチャー"><span>UFO</span><small>キャッチャー</small></h2>
-    <div class="shop-balance"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""> <span id="ufo-coins">0</span></div>
-    <div class="ufo-cabinet">
-      <div class="ufo-machine"><canvas id="ufo-canvas" width="640" height="720" aria-label="UFOキャッチャーの台"></canvas></div>
+    <div class="ufo-top">
+      <button id="btn-ufo-back" class="map-back" type="button" aria-label="もどる"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <p class="ufo-neon" aria-hidden="true"><b>ARCADE</b><small>NEW YORK</small></p>
+      <div class="map-badge ufo-balance" aria-label="コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""><span id="ufo-coins">0</span></div>
+    </div>
+    <div id="ufo-cabinet" class="ufo-cabinet">
+      <div class="ufo-marquee">
+        <i class="ufo-bulbs b1" aria-hidden="true"></i><i class="ufo-bulbs b2" aria-hidden="true"></i>
+        <h2 class="ufo-title" aria-label="UFOキャッチャー"><span>UFO</span><small>CATCHER</small></h2>
+      </div>
+      <div class="ufo-window">
+        <div class="ufo-machine"><canvas id="ufo-canvas" width="640" height="600" aria-label="UFOキャッチャーの台"></canvas></div>
+        <i class="ufo-glass" aria-hidden="true"></i>
+      </div>
       <div class="ufo-panel">
-        <div class="ufo-price" aria-label="1回100コイン"><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""><b>100</b></div>
+        <div class="ufo-price" aria-label="1回100コイン"><i class="ufo-slot" aria-hidden="true"></i><span><img class="currency-icon" src="public/opt/cosmo-coin.webp" alt=""><b>100</b></span><small>1かい</small></div>
         <button id="btn-ufo-play" class="ufo-play" type="button" aria-label="長押しでアームを動かす">
           <span class="ufo-play-dome"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 24h21M23 13l11 11-11 11" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
         </button>
+        <p class="ufo-howto" aria-hidden="true">おしてる間<br>みぎへ<b>→</b></p>
       </div>
+      <div class="ufo-base" aria-hidden="true"><i class="ufo-door">PUSH</i><div class="ufo-ticker"><span>★ COSMII ARCADE NYC ★ 1 PLAY 100 COIN ★ GOOD LUCK! ★ OPEN 24 HRS ★&nbsp;</span><span>★ COSMII ARCADE NYC ★ 1 PLAY 100 COIN ★ GOOD LUCK! ★ OPEN 24 HRS ★&nbsp;</span></div></div>
     </div>
-    <div class="ufo-tray">
-      <div id="ufo-owned" class="ufo-owned" aria-label="もっているアクセサリー"></div>
-    </div>
-    <button id="btn-ufo-back" class="btn">BACK</button>
+    <section class="ufo-shelf" aria-label="けいひん">
+      <div class="ufo-shelf-head"><b>けいひん</b><span id="ufo-count">0/8</span><button id="btn-ufo-unequip" class="ufo-unequip" type="button">はずす</button></div>
+      <div id="ufo-owned" class="ufo-owned"></div>
+    </section>
   </div>
   <div id="screen-mission" class="screen overlay solid hidden">
     <h2 class="screen-heading">MISSION</h2>
@@ -315,5 +328,6 @@
 <script src="js/OtherGames.js"></script>
 <script src="js/Game.js"></script>
 <script src="main.js"></script>
+  <div id="white-flash" class="white-flash" aria-hidden="true"></div>
 </body>
 </html>

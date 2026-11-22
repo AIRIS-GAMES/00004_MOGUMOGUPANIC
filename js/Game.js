@@ -187,6 +187,13 @@ class Game {
   static WORLD = 3500;       // マップの一辺 [px]
   static TIME_LIMIT = 60;    // 制限時間 [s]
   static FEVER_TIME = 5;     // クリア後の食べ放題 [s]
+  static CLEAR_HOLD = 0.8;   // クリアの瞬間、スローになって「STAGE CLEAR!」を見せる時間 [s]
+  static CLEAR_SLOW = 0.15;  // その間のゲームの速さ
+  static OUTRO_TIME = 1.2;   // 食べ放題のあと「ごちそうさま」してリザルトへ移るまで [s]
+  static HAZARD_GRACE = 2.5; // 危険物に当たった後、次の危険物をはじく時間 [s]
+  static HAZARD_CATCH = 0.6; // 危険物は口の半径のこの割合より内側に来た時だけ入る
+  static SMALL_FROM = 11;    // この面から「小さい物は点が少ない」
+  static SMALL_FREE = 0.5;   // 自分よりこの段階までは小さくても満点
   static FEVER_SIZE = 2.2;   // 食べ放題中の大きさ(見た目と口の倍率)
   /** 食べ放題でもらえるコインの上限(序盤の面を回して稼ぎすぎないように) */
   static feverCoinCap(stageId) { return 20 + stageId * 8; }
@@ -685,10 +692,11 @@ class Game {
   openUfo() {
     this._leaveTitle();
     this.state = 'ufo';
-    const refresh = () => {
+    const cabinet = document.getElementById('ufo-cabinet');
+    const refresh = (newId = null) => {
       this.ui.setUfoCoins(Storage.getCoins(), this.ufo.canPlay);
       this.ui.updateCoins(Storage.getCoins());
-      this.ui.buildUfoOwned((id) => { this._btn(); Accessories.equip(id); refresh(); });
+      this.ui.buildUfoOwned((id) => { this._btn(); Accessories.equip(id); refresh(); }, newId);
     };
     if (!this.ufo) {
       const canvas = document.getElementById('ufo-canvas');
@@ -699,16 +707,20 @@ class Game {
           Analytics.design(`ufo:win:${prize.id}`);
           // 初めて取ったアクセサリーは自動でつける
           if (prize.id !== 'coins' && !Accessories.equipped()) Accessories.equip(prize.id);
-          refresh();
+          // 台の電球がチカチカして、少しゆれる
+          cabinet?.classList.add('is-win');
+          clearTimeout(this._ufoWinTimer);
+          this._ufoWinTimer = setTimeout(() => cabinet?.classList.remove('is-win'), 1600);
+          refresh(prize.id !== 'coins' ? prize.id : null);
         },
-        onChange: () => refresh(),
+        onChange: () => { cabinet?.classList.remove('is-playing'); refresh(); },
       });
       const play = this.ui.el.ufoPlay;
       const down = (e) => {
         e.preventDefault();
         play.classList.add('is-down');
         try { play.setPointerCapture(e.pointerId); } catch (_) { /* 古いWebView */ }
-        if (this.ufo.press()) this.audio.button();
+        if (this.ufo.press()) { this.audio.button(); cabinet?.classList.add('is-playing'); }
         refresh();
       };
       const up = (e) => { e.preventDefault(); play.classList.remove('is-down'); this.ufo.release(); };
@@ -859,7 +871,7 @@ class Game {
   startGame(stageId = this.currentStageId, boostIds = [], opts = {}) {
     this._resetInput();
     // エンドレス:エリア1から。ブーストは使えない(ランキングを公平にする)
-    this.endlessRun = opts.endless ? { area: 1 } : null;
+    this.endlessRun = opts.endless ? { area: 1, areaT: 0 } : null;
     this.endlessStage = opts.endless ? Endless.stageFor(1) : null;
     if (opts.endless) boostIds = [];
     this.safePoint = null;
@@ -870,6 +882,7 @@ class Game {
     const center = Game.WORLD / 2;
 
     this.player = new Player(skin, this.images[skin.id], center, center);
+    if (this.endlessRun) this.player.maxScale = Endless.scaleCap(1);
     this.player.accessory = typeof Accessories !== 'undefined' ? Accessories.equipped() : null;
     this.ui.setHudFace(skin.closedSrc);
     this.activeBoosts = new Set(boostIds);
@@ -938,6 +951,8 @@ class Game {
     this.bubbles = stage.id >= BubbleField.fromStage ? new BubbleField(this, stage) : null;
     if (this.bubbles) this.bubbles.start();
     this.shockTimer = 0;
+    this.smallHintShown = false;
+    this.hazardGrace = 0;
     this.burpTimer = 0;
     this.rampage = null;
     this.flames = [];
@@ -946,6 +961,9 @@ class Game {
     this.feverEaten = 0;
     this.ui.showFever(false);
     this.recentEats = [];
+    this.clearHold = 0;
+    this.feverOutro = null;
+    this.ui.showClearBanner(false, true);
     this.popTexts = [];
     if (this.endlessRun) Analytics.design('endless:start');
     else Analytics.stageStart(stage.id);
@@ -973,6 +991,10 @@ class Game {
   endGame() {
     if (this.state !== 'play') return;
     this._resetInput();
+    this.clearHold = 0;
+    this.feverOutro = null;
+    if (this.player) { this.player.spin = 0; this.player.hop = 0; }
+    this.ui.showClearBanner(false, true);
     this.state = 'result';
     this.input.active = false;
 
@@ -993,6 +1015,7 @@ class Game {
     this.stunTimer = 0;
     this.stunCause = null; this.stunCauseT = 0;
     this.shockTimer = 0;
+    this.hazardGrace = 0;
     this.ui.hideTutorial();
     if (this.currentStageId === 1 && !Retention.tutorialDone()) {
       Retention.markTutorialDone();
@@ -1249,6 +1272,13 @@ class Game {
   /* ---- プレイ中の更新 ---- */
   _updatePlay(dt, elapsed = dt) {
     const player = this.player;
+    if (this.feverOutro) { this._updateFeverOutro(dt, elapsed); return; }
+    // クリアの瞬間はスロー
+    if (this.clearHold > 0) {
+      this.clearHold -= elapsed;
+      if (this.clearHold > 0) { dt *= Game.CLEAR_SLOW; elapsed *= Game.CLEAR_SLOW; }
+      else this._endClearHold();
+    }
     // コスミーフィーバーを選んでいる間は時間がゆっくり
     const real = elapsed;
     const slow = this.power ? this.power.timeScale : 1;
@@ -1263,6 +1293,12 @@ class Game {
       if (this.bugLeft <= 0) this._cureBug();
     }
     const drain = this.endlessRun ? Endless.drain(this.endlessRun.area) : 1;
+    // エンドレス:最近ふえた時間はゆっくり忘れる(一気にたくさん食べても時間は増えすぎない)
+    if (this.endlessRun && this.endlessRun.recent > 0) this.endlessRun.recent *= Math.pow(0.5, elapsed / Endless.RECENT_HALF);
+    if (this.endlessRun && !this.fever) {
+      this.endlessRun.areaT += elapsed;
+      if (this.endlessRun.areaT >= Endless.AREA_TIME) this._advanceArea();
+    }
     if (this.fever) {
       // 食べ放題中は時間が止まる
       if (this._updateFever(elapsed)) return;
@@ -1282,6 +1318,8 @@ class Game {
 
     if (this.stunTimer > 0) this.stunTimer = Math.max(0, this.stunTimer - dt);
     if (this.shockTimer > 0) this.shockTimer = Math.max(0, this.shockTimer - dt);
+    if (this.hazardGrace > 0) this.hazardGrace = Math.max(0, this.hazardGrace - dt);
+    if (this.player) this.player.grace = this.stunTimer > 0 ? 0 : this.hazardGrace;
     if (this.burpTimer > 0) this.burpTimer = Math.max(0, this.burpTimer - dt);
     if (this.hazards) this.hazards.update(dt);
     this._updateFlames(dt);
@@ -1317,7 +1355,7 @@ class Game {
 
     // 制限時間
     const stage = this.getStage(this.currentStageId);
-    this.ui.updateHUD(this.score, player.scale, this.timeLeft, stage.targetScore, this._hudLabel());
+    this.ui.updateHUD(this.score, player.scale, this.timeLeft, stage.targetScore, this._hudLabel(), this._hudProgress());
     if (this.timeLeft <= 0 && !this.fever && !this.cosmiiAbility.isRunning) this.endGame();
   }
 
@@ -1371,14 +1409,21 @@ class Game {
     this.startWithLoading(1, [], { endless: true });
   }
 
+  /** エンドレスのバーは「次のエリアまでの時間」 */
+  _hudProgress() {
+    return this.endlessRun ? Math.min(1, this.endlessRun.areaT / Endless.AREA_TIME) : null;
+  }
+
   _hudLabel() {
     return this.endlessRun ? `AREA ${this.endlessRun.area}` : '';
   }
 
-  /** スコアが区切りを越えた:次のエリアへ(見た目・ギミック・危険物を入れ替える) */
+  /** 40秒たった:次のエリアへ(見た目・しかけ・危険物を入れ替え、大きくなれる上限も上がる) */
   _advanceArea() {
     const run = this.endlessRun;
-    while (this.score >= Endless.threshold(run.area)) run.area++;
+    run.area++;
+    run.areaT = 0;
+    this.player.maxScale = Endless.scaleCap(run.area);
     const stage = Endless.stageFor(run.area);
     this.endlessStage = stage;
     this.timeLeft = Math.min(Endless.MAX_TIME, this.timeLeft + Endless.areaBonus(run.area));
@@ -1472,14 +1517,20 @@ class Game {
     this.stunTimer = 0;
     this.stunCause = null; this.stunCauseT = 0;
     this.shockTimer = 0;
+    this.hazardGrace = 0;
     this.burpTimer = 0;
     p.startVacuum();
     this.audio.clear();
     this.audio.vacuum();
     this.camera.shake(10);
     for (let i = 0; i < 3; i++) this.particles.ring(p.x, p.y, ['#ffd24d', '#ff6b81', '#6cb9ff'][i], p.bodyR * (1.2 + i * 0.5));
-    this.ui.showFever(true);
-    this.ui.updateFever(1, 0);
+    // まずスローにして「STAGE CLEAR!」。食べ放題の表示はそのあと
+    this.clearHold = Game.CLEAR_HOLD;
+    this.ui.showClearBanner(true);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      this.particles.burst(p.x + Math.cos(a) * p.bodyR * 1.4, p.y + Math.sin(a) * p.bodyR * 1.4, ['#ffd24d', '#ff6b81', '#6cb9ff', '#8fd14f', '#c89bff', '#ffffff'][i], { kind: 'star', colors: ['#ffd24d', '#ffffff'] });
+    }
     Analytics.design(`fever:start:${String(this.currentStageId).padStart(2, '0')}`);
   }
 
@@ -1504,8 +1555,59 @@ class Game {
     this.feverEaten = f.eaten;
     this.fever = null;
     this.ui.showFever(false);
-    this.endGame();
+    this._startFeverOutro();
     return true;
+  }
+
+  /** スローが終わったら、食べ放題の表示を出す */
+  _endClearHold() {
+    this.clearHold = 0;
+    this.ui.showClearBanner(false);
+    if (!this.fever) return;
+    this.ui.showFever(true);
+    this.ui.updateFever(Math.max(0, this.fever.t) / Game.FEVER_TIME, this.fever.coins);
+    this.camera.shake(6);
+  }
+
+  /** 食べ放題のあと:口を閉じて、ゲップして、くるっと一回転「ごちそうさま！」 */
+  _startFeverOutro() {
+    const p = this.player;
+    this.feverOutro = { t: Game.OUTRO_TIME, flash: false };
+    p.spin = 0;
+    p.hop = 0;
+    p.vacuumActive = false;
+    p.vacuumTimer = 0;
+    p.moving = false;
+    p.mouthHold = 0;
+    p.mouthOpen = 0;
+    this.burpTimer = 0.6;
+    this.gimmickText(p.x, p.y - p.bodyR * 1.35, 'ごちそうさま！', '#ff6b81');
+    this.ui.setGauge(0, false);
+  }
+
+  _updateFeverOutro(dt, elapsed) {
+    const o = this.feverOutro, p = this.player;
+    o.t -= elapsed;
+    const k = 1 - Math.max(0, o.t) / Game.OUTRO_TIME;
+    // 0.2〜0.7の間に、ぴょんと跳ねながら一回転
+    const s = Math.min(1, Math.max(0, (k - 0.2) / 0.5));
+    p.spin = (1 - Math.pow(1 - s, 3)) * Math.PI * 2;
+    p.hop = Math.sin(s * Math.PI) * p.bodyR * 0.45;
+    p.mouthOpen = 0;
+    if (this.burpTimer > 0) this.burpTimer = Math.max(0, this.burpTimer - dt);
+    if (this.popTexts && this.popTexts.length) {
+      for (const t of this.popTexts) t.life -= dt;
+      this.popTexts = this.popTexts.filter(t => t.life > 0);
+    }
+    this.particles.update(dt);
+    this.camera.follow(p.x, p.y, this._targetZoom(), dt);
+    this.camera.update(dt);
+    // 最後は画面がふわっと白くなって、リザルトへ
+    if (!o.flash && o.t < 0.35) { o.flash = true; this.ui.flashWhite(); }
+    if (o.t > 0) return;
+    this.feverOutro = null;
+    p.spin = 0; p.hop = 0;
+    this.endGame();
   }
 
   _updateSuction(dt) {
@@ -1520,8 +1622,16 @@ class Game {
 
       if (obj.state === 'idle') {
         if (obj.wobble > 0) obj.wobble -= dt;
-        const catchRadius = mouth.r + obj.r * 1.45;
-        if (dist < catchRadius) {
+        // 危険物は口のまん中に来た時だけ入る(大きくなっても、よけられる)。
+        // 1回当たった後はしばらく(hazardGrace)危険物を食べず、はじき返す
+        const hz = obj.hazard && !this.fever;
+        const catchRadius = hz ? mouth.r * Game.HAZARD_CATCH + obj.r : mouth.r + obj.r * 1.45;
+        if (hz && this.hazardGrace > 0 && dist < mouth.r + obj.r) {
+          const push = Math.min(40, Math.max(0, mouth.r + obj.r - dist) * 0.6 + 4);
+          obj.x = Math.max(80, Math.min(Game.WORLD - 80, obj.x - (dx / dist) * push));
+          obj.y = Math.max(80, Math.min(Game.WORLD - 80, obj.y - (dy / dist) * push));
+          obj.wobble = 0.3;
+        } else if (dist < catchRadius) {
           if (this.canEat(obj, player, mouth)) {
             // 吸い込み開始
             obj.state = 'suck';
@@ -1592,6 +1702,23 @@ class Game {
     return Math.min(4, Math.max(1, count)) + Math.floor(Math.max(0, count) / 10);
   }
 
+  /**
+   * 後半の面(11面〜)では、自分よりずっと小さい物の点数が減る。
+   * 大きくなっても小物を吸い続けるだけでは勝てず、大きい物やしかけを狙うようにする。
+   * 1を返すと変化なし。面が進むほど強く減る。
+   */
+  _smallItemFactor(obj) {
+    if (obj.gimmick || obj.rare || obj.scoreOnly || !this.player) return 1;
+    const level = this.endlessRun ? Math.min(20, this.endlessRun.area + 4) : (typeof this.currentStageId === 'number' ? this.currentStageId : 0);
+    if (level < Game.SMALL_FROM) return 1;
+    const gap = this.player.scale - obj.type.req - Game.SMALL_FREE;   // 何段階小さいか(半段階までは減らない)
+    if (gap <= 0) return 1;
+    const t = Math.min(1, (level - Game.SMALL_FROM) / 9);          // 11面→0, 20面→1
+    const step = 0.1 + 0.2 * t;                                      // 1段階ごとに減る割合
+    const floor = 0.45 - 0.33 * t;                                   // これより下には減らない
+    return Math.max(floor, 1 - gap * step);
+  }
+
   /** 吸い込み完了(スコア・成長・コンボ・演出) */
   _consume(obj, eater = null) {
     const player = this.player;
@@ -1614,6 +1741,7 @@ class Game {
     if (obj.hazard && this.shield > 0) {
       // バリアが1回だけ守ってくれる(パチンと割れる)
       this.shield--;
+      this.hazardGrace = Game.HAZARD_GRACE;
       const p = this.player;
       this.particles.ring(p.x, p.y, '#8fd8ff', p.bodyR * 1.5);
       this.particles.ring(p.x, p.y, '#ffffff', p.bodyR * 1.9);
@@ -1623,7 +1751,10 @@ class Game {
     }
     if (obj.hazard) {
       // 吸い込んではいけない物:しびれる・爆走・ゲップ。スコア・成長・ゲージなし
+      if (this.hazardGrace > 0) { if (this.hazards) this.hazards.respawn.push({ kind: obj.hazard, t: 2 }); return; }
       if (this.hazards) this.hazards.onEaten(obj);
+      // しびれ・爆走が終わってからも少しの間は平気(続けてビリビリしない)
+      this.hazardGrace = Math.max(Game.HAZARD_GRACE, (this.stunTimer || 0) + 1.5, this.rampage ? this.rampage.t + 1.5 : 0);
       return;
     }
     if (obj.burnt) {
@@ -1648,7 +1779,12 @@ class Game {
     const itemScoreMultiplier = (obj.scoreOnly ? 0.5 : 1) * (this.gimmick ? this.gimmick.scoreMul(obj) : 1) * (obj.rare && typeof Zukan !== 'undefined' ? Zukan.RARE_SCORE : 1);
     if (this.gimmick) this.gimmick.onConsume(obj);
     if (this.clocks) this.clocks.onConsume(obj);
-    const gained = Math.floor(obj.type.score * itemScoreMultiplier * mult * this.scoreMultiplier * this.cosmiiAbility.scoreMultiplier * ((this.bug && this.bug.scoreMul) || 1));
+    const small = this._smallItemFactor(obj);
+    if (small < 0.6 && !this.smallHintShown) {
+      this.smallHintShown = true;
+      this.ui.showGimmickToast('小さい物は点が少ない！ 大きい物をねらおう');
+    }
+    const gained = Math.max(1, Math.floor(obj.type.score * itemScoreMultiplier * small * mult * this.scoreMultiplier * this.cosmiiAbility.scoreMultiplier * ((this.bug && this.bug.scoreMul) || 1)));
     this.score += gained;
     if (this.fever) {
       this.fever.eaten++;
@@ -1656,7 +1792,10 @@ class Game {
     }
     // エンドレス:食べると時間が少し増える
     if (this.endlessRun && !obj.scoreOnly) {
-      this.timeLeft = Math.min(Endless.MAX_TIME, this.timeLeft + Endless.timeGain(obj.type, this.endlessRun.area));
+      const run = this.endlessRun;
+      const gain = Endless.timeGain(obj.type, run.area, this.player.scale) / (1 + (run.recent || 0) / Endless.recentK(this.player.scale));
+      run.recent = (run.recent || 0) + gain;
+      this.timeLeft = Math.min(Endless.MAX_TIME, this.timeLeft + gain);
       this.ui.flashTimeGain();
     }
     // 炭酸のゲップで吐き出す候補(直前に食べた物)

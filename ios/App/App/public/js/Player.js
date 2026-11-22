@@ -198,7 +198,7 @@ class Player {
    */
   grow(amount) {
     const before = Math.floor(this.scale);
-    this.scale = Math.min(Player.MAX_SCALE, this.scale + amount * (this.skin.growMul || 1));
+    this.scale = Math.min(this.maxScale || Player.MAX_SCALE, this.scale + amount * (this.skin.growMul || 1));
     return Math.floor(this.scale) > before;
   }
 
@@ -260,8 +260,11 @@ class Player {
     const tilt = this.dirX * 0.14 * this.speedRatio; // 進行方向へ少し傾く
 
     ctx.save();
-    ctx.translate(this.x, this.y + bob);
-    ctx.rotate(tilt);
+    // 危険物に当たった直後(しばらく平気な間)は点滅する
+    if (this.grace > 0 && Math.floor(this.time * 14) % 2) ctx.globalAlpha *= 0.55;
+    // クリア後の「ごちそうさま」で跳ねて一回転する
+    ctx.translate(this.x, this.y + bob - (this.hop || 0));
+    ctx.rotate(tilt + (this.spin || 0));
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     // アクセサリー(UFOキャッチャーやずかんでもらえる)
     if (this.accessory && typeof Accessories !== 'undefined') Accessories.draw(ctx, this.accessory, r, h, { skin: this.skin.id, open: img === this.images.open, w });

@@ -310,11 +310,17 @@ class CosmiiFever {
 
   /** 分身の口に危険物が当たった:食べずに押しのける */
   _nudgeAway(c, obj) {
-    const W = Game.WORLD;
-    const nx = obj.x - c.x, ny = obj.y - c.y, d = Math.hypot(nx, ny) || 1;
-    obj.x = Math.max(80, Math.min(W - 80, obj.x + nx / d * 70));
-    obj.y = Math.max(80, Math.min(W - 80, obj.y + ny / d * 70));
-    obj.noSuck = Math.max(obj.noSuck || 0, 0.3);
+    const W = Game.WORLD, p = this.game.player;
+    // 分身からも本体からも離れる向きへ押す(本体の口に押し込まない)
+    let nx = obj.x - c.x, ny = obj.y - c.y;
+    const d = Math.hypot(nx, ny) || 1;
+    const px = obj.x - p.x, py = obj.y - p.y, pd = Math.hypot(px, py) || 1;
+    nx = nx / d + px / pd * 1.5; ny = ny / d + py / pd * 1.5;
+    const n = Math.hypot(nx, ny) || 1;
+    const dist = 70 + p.bodyR * 0.6;
+    obj.x = Math.max(80, Math.min(W - 80, obj.x + nx / n * dist));
+    obj.y = Math.max(80, Math.min(W - 80, obj.y + ny / n * dist));
+    obj.noSuck = Math.max(obj.noSuck || 0, 0.8);
     obj.wobble = 0.5;
   }
 

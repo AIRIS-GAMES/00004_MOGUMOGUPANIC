@@ -381,7 +381,9 @@ class ClockGimmick extends Gimmick {
 
   spawnClock(near = false) {
     const p = this.player, a = Math.random() * Math.PI * 2;
-    const d = near ? 380 + Math.random() * 260 : 700 + Math.random() * 400;
+    // 大きくなって口が広いほど、遠くに出る(出た瞬間に吸い込まないように)
+    const extra = p.getMouth().r * 2.2;
+    const d = (near ? 380 + Math.random() * 260 : 700 + Math.random() * 400) + extra;
     const clock = this.spawnExtra(this.clockType, p.x + Math.cos(a) * d, p.y + Math.sin(a) * d);
     clock.gimmick = { clock: true, vx: 0, vy: 0, wander: Math.random() * 6 };
   }
@@ -389,14 +391,17 @@ class ClockGimmick extends Gimmick {
   update(dt) {
     super.update(dt);
     const p = this.player, W = Game.WORLD;
-    const runSpeed = 250;
+    // 大きくなっても追いかけっこになるよう、逃げ始める距離と速さもついてくる
+    const mr = p.getMouth().r;
+    const runSpeed = Math.max(250, p.moveSpeed * 0.95);
+    const fleeR = 300 + mr * 1.6;
     for (const c of this.activeExtras(o => o.gimmick && o.gimmick.clock)) {
       if (c.state !== 'idle') continue;
       const g = c.gimmick;
       g.wander += dt;
       const dx = c.x - p.x, dy = c.y - p.y, d = Math.hypot(dx, dy) || 1;
       let tx = Math.cos(g.wander * 0.7) * 70, ty = Math.sin(g.wander * 0.9) * 70;
-      if (d < 300) { tx = dx / d * runSpeed; ty = dy / d * runSpeed; }
+      if (d < fleeR) { tx = dx / d * runSpeed; ty = dy / d * runSpeed; }
       // 壁際では壁沿いに逃げる(角に追い詰めれば捕まえられる)
       if (c.x < 120 && tx < 0) tx = 0;
       if (c.x > W - 120 && tx > 0) tx = 0;
@@ -407,7 +412,7 @@ class ClockGimmick extends Gimmick {
       g.vy += (ty - g.vy) * k;
       c.x = Math.max(60, Math.min(W - 60, c.x + g.vx * dt));
       c.y = Math.max(60, Math.min(W - 60, c.y + g.vy * dt));
-      c.rot = Math.sin(this.time * 14 + g.wander) * (d < 300 ? 0.35 : 0.1);
+      c.rot = Math.sin(this.time * 14 + g.wander) * (d < fleeR ? 0.35 : 0.1);
     }
     for (const r of this.respawn) r.t -= dt;
     const ready = this.respawn.filter(r => r.t <= 0);

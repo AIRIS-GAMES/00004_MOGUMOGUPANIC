@@ -176,6 +176,20 @@ const HAZARD_LEASH_LIMIT = 140 + 60;
       g._consume(h);
       const shocked = { stun: g.stunTimer > 1, score: g.score, combo: g.comboCount, eaten: g.suckedCount - eaten,
         grew: g.player.scale !== size, input: Game.prototype._getMoveInput.call(g).active };
+      // 当たった直後は、次の危険物を食べても続けてビリビリしない(連続しびれ防止)
+      const st0 = g.stunTimer, h2 = g.hazards.activeHazards('zapper')[0];
+      g._consume(h2);
+      shocked.graceSafe = g.hazardGrace > 2 && g.stunTimer === st0;
+      // 大きくなると危険物も大きくなり、口のまん中に来ないと入らない
+      const sc0 = g.player.scale; g.player.scale = 8;
+      g.hazards._walk(0.01);
+      const hz3 = g.hazards.activeHazards('zapper')[0];
+      shocked.grows = hz3.r > 24 * 2;
+      const m3 = g.player.getMouth();
+      hz3.x = m3.x + m3.r * 0.8 + hz3.r; hz3.y = m3.y; hz3.state = 'idle';
+      const gr0 = g.hazardGrace; g.hazardGrace = 0; g._updateSuction(1 / 60);
+      shocked.edgeSafe = hz3.state === 'idle';
+      g.hazardGrace = gr0; g.player.scale = sc0;
       for (let i = 0; i < 2.5 * 60; i++) g._updatePlay(1 / 60, 1 / 60);
       const after = g.hazards.items.filter(o => o.active).length;
 
@@ -185,7 +199,7 @@ const HAZARD_LEASH_LIMIT = 140 + 60;
       const sodaHazard = g.hazards.activeHazards('soda')[0];
       for (const o of g.hazards.items) if (o !== chiliHazard && o !== sodaHazard) { o.x = 120; o.y = 120; }
       g.player.x = 900; g.player.y = 1750;
-      g.stunTimer = 0; g.player.dirX = 1; g.player.dirY = 0;
+      g.stunTimer = 0; g.hazardGrace = 0; g.player.dirX = 1; g.player.dirY = 0;
       const speed0 = g.player.moveSpeed, x0 = g.player.x;
       g._consume(chiliHazard);
       const forced = Game.prototype._getMoveInput.call(g);
@@ -213,6 +227,7 @@ const HAZARD_LEASH_LIMIT = 140 + 60;
       g.score = 1000;
       g.recentEats = [];
       for (let i = 0; i < 7; i++) g.recentEats.push({ type: OBJECT_TYPES[0], points: 40 });
+      g.hazardGrace = 0;
       g._consume(sodaHazard);
       const spat = g.hazards.spat.filter(o => o.active);
       const soda = { score: g.score, spat: spat.length, left: g.recentEats.length, blocked: !g.canEat(spat[0]) };
@@ -232,7 +247,7 @@ const HAZARD_LEASH_LIMIT = 140 + 60;
     assert.deepEqual(hz.kinds, [6, 3, 3]);
     assert.equal(hz.count, 12);
     assert.equal(hz.nearStart, false, 'Start area is kept clear');
-    assert.deepEqual(hz.shocked, { stun: true, score: 500, combo: 0, eaten: 0, grew: false, input: false });
+    assert.deepEqual(hz.shocked, { stun: true, score: 500, combo: 0, eaten: 0, grew: false, input: false, graceSafe: true, grows: true, edgeSafe: true });
     assert.equal(hz.after, hz.count, 'Swallowed hazard respawns elsewhere');
     assert.deepEqual(hz.chili, { forced: true, faster: true, moved: true, ended: true, cantEat: true, scorched: true, burntScore: true });
     assert.deepEqual(hz.soda, { score: 800, spat: 5, left: 2, blocked: true, edibleLater: true });

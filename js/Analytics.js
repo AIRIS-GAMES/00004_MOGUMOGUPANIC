@@ -39,7 +39,7 @@ class Analytics {
       // Capacitor 検出でプラットフォーム別ビルドを設定(web/ios/android)
       const platform = (window.Capacitor && window.Capacitor.getPlatform)
         ? window.Capacitor.getPlatform() : 'web';
-      GA.configureBuild(`${platform}-1.0.0`);
+      GA.configureBuild(`${platform}-1.11.0`);
 
       // リソースイベントで使う通貨・アイテム種別は init 前に宣言が必要
       GA.configureAvailableResourceCurrencies(['coins']);

@@ -92,7 +92,7 @@ class HowTo {
 
   _food() {
     const cards = OBJECT_TYPES.map(t => this._card(this._img(this._sprite(t)), HowTo.NAMES[t.id] || t.id, `サイズ${t.req}〜・${t.score}点`)).join('');
-    return this._section('たべもの', cards, 'ステージごとに出る物が変わるよ。たまに光る「色ちがい」は3倍の点数！');
+    return this._section('たべもの', cards, 'ステージごとに出る物が変わるよ。たまに光る「色ちがい」は3倍の点数！<br>11面からは、自分よりずっと小さい物は点が少なくなる。大きい物をねらおう！');
   }
 
   _care() {

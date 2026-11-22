@@ -31,9 +31,13 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       out.feverOn = !!g.fever;
       out.state = g.state;
       out.clearTime = g.clearTime;
-      out.banner = !document.getElementById('fever').classList.contains('hidden');
+      // まず「STAGE CLEAR!」とスロー、そのあと食べ放題の表示
+      out.clearBanner = !document.getElementById('clear-banner').classList.contains('hidden');
+      out.feverHudLater = document.getElementById('fever').classList.contains('hidden');
+      out.slow = g.clearHold > 0;
       const t0 = g.timeLeft;
       for (let i = 0; i < 60; i++) g._updatePlay(1 / 60, 1 / 60);
+      out.banner = !document.getElementById('fever').classList.contains('hidden');
       out.timeFrozen = g.timeLeft === t0;
       out.big = g.player.feverMul > 1.5;
       // 何でも食べられる:大きな家や塔も、危険物も
@@ -50,7 +54,14 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       g.fever.coins = 9999; g._consume(g.spawner.pool.find(o => o.active && o.state === 'idle' && !o.hazard));
       out.capped = g.fever.coins === Game.feverCoinCap(3);
       // 5秒で終わってリザルトへ
-      for (let i = 0; i < 60 * 6 && g.state === 'play'; i++) g._updatePlay(1 / 60, 1 / 60);
+      // 食べ放題のあと「ごちそうさま」で一回転してからリザルトへ
+      let outro = false, spun = 0;
+      for (let i = 0; i < 60 * 9 && g.state === 'play'; i++) {
+        g._updatePlay(1 / 60, 1 / 60);
+        if (g.feverOutro) { outro = true; spun = Math.max(spun, g.player.spin); }
+      }
+      out.outro = outro; out.spun = spun > 6; out.spinVal = spun;
+      out.flash = document.getElementById('white-flash').classList.contains('go');
       out.endState = g.state;
       out.feverOff = !g.fever && g.player.feverMul === 1;
       out.bannerHidden = document.getElementById('fever').classList.contains('hidden');
@@ -62,7 +73,13 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.equal(r.feverOn, true);
     assert.equal(r.state, 'play');
     assert.ok(r.clearTime > 0, 'clear time is fixed at the moment of clearing');
+    assert.equal(r.clearBanner, true);
+    assert.equal(r.feverHudLater, true);
+    assert.equal(r.slow, true);
     assert.equal(r.banner, true);
+    assert.equal(r.outro, true);
+    assert.equal(r.spun, true, `spin ${r.spinVal}`);
+    assert.equal(r.flash, true);
     assert.equal(r.timeFrozen, true);
     assert.equal(r.big, true);
     assert.equal(r.eatHuge, true);
@@ -77,7 +94,7 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.ok(r.gotCoins >= Game_cap(3), `coins ${r.gotCoins}`);
     assert.ok(r.stars >= 1);
     assert.deepEqual(errors, []);
-    console.log('PASS: fever starts on clear, time frozen, eat anything, hazards harmless, coin cap, ends into result with FEVER bonus.');
+    console.log('PASS: fever starts on clear, time frozen, eat anything, hazards harmless, coin cap, CLEAR banner + slow-mo, outro spin + flash, ends into result with FEVER bonus.');
   } finally {
     await browser.close();
   }

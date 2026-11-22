@@ -4,14 +4,37 @@
  *  - つかめたら左の取り出し口まで運ぶ。途中で落ちることもある
  *  - 失敗しても景品は少しずつ取り出し口へ寄っていく(「あと少し」で次も遊びたくなる)
  *  - 景品はまだ持っていないアクセサリー。全部そろったらコインのカプセル
+ *  - 景品は前後2列に6つ。めずらしい景品(RARE)はカプセルが金色に光る
  * ========================================================= */
 class UfoCatcher {
   static COST = 100;
   static W = 320;
-  static H = 360;
+  static H = 300;
   static CHUTE = 64;        // 左の取り出し口の幅
-  static FLOOR = 300;       // 景品が置かれている高さ
+  static FLOOR = 236;       // 景品が置かれている高さ(前の列はこれより少し下)
   static COIN_PRIZE = 150;
+  static R = 33;            // カプセルの半径
+  // 景品の置き場所:奥の列3つ、手前の列3つ(手前は少し右にずらして山に見せる)
+  static SLOTS = [
+    { x: 112, y: UfoCatcher.FLOOR - 16 }, { x: 182, y: UfoCatcher.FLOOR - 16 }, { x: 252, y: UfoCatcher.FLOOR - 16 },
+    { x: 146, y: UfoCatcher.FLOOR + 14 }, { x: 216, y: UfoCatcher.FLOOR + 14 }, { x: 276, y: UfoCatcher.FLOOR + 14 },
+  ];
+  static RARE = ['halo', 'starglasses'];
+  // 夜空の星 [x, y, 位相]
+  static STARS = [[20, 20, 0], [52, 46, 1.3], [96, 14, 2.1], [150, 34, 0.7], [186, 12, 2.8], [230, 50, 1.9], [320 - 12, 86, 0.4], [124, 70, 3.3], [252, 18, 1.1], [30, 92, 2.4]];
+  // 窓のあかり [x, 床からの高さ, 位相]
+  static WINDOWS = (() => {
+    const w = [];
+    const towers = [[66, 28, 70], [92, 22, 52], [118, 24, 92], [176, 26, 60], [206, 40, 104], [262, 30, 78], [292, 30, 54]];
+    let n = 0;
+    for (const [x, tw, h] of towers) {
+      for (let y = 38; y < h - 4; y += 9) {
+        for (let xx = x + 4; xx < x + tw - 5; xx += 7) { n++; if ((n * 7) % 5 < 3) w.push([xx, y, n * 0.37]); }
+      }
+    }
+    return w;
+  })();
+  static COLORS = ['#ff9ec6', '#9be0f7', '#b9f2c9', '#d3a8ff', '#ffc59e'];
 
   constructor(canvas, hooks) {
     this.canvas = canvas;
@@ -26,17 +49,20 @@ class UfoCatcher {
     this._restock();
   }
 
-  /** 景品を3つ並べる(持っていないアクセサリーから) */
-  _restock() {
+  /** 空いている置き場所に景品を置く(持っていないアクセサリーから。なければコイン) */
+  _restock(limit = Infinity) {
     const owned = new Set(Accessories.owned());
     const pool = Accessories.LIST.filter(a => a.source === 'ufo' && !owned.has(a.id) && !this.prizes.some(p => p.id === a.id));
-    const colors = ['#ff9ec6', '#9be0f7', '#ffd86b', '#b9f2c9', '#d3a8ff'];
-    const slots = [130, 205, 275];
-    for (const x of slots) {
-      if (this.prizes.some(p => Math.abs(p.homeX - x) < 1)) continue;
+    UfoCatcher.SLOTS.forEach((slot, i) => {
+      if (limit <= 0 || this.prizes.some(p => p.slot === i)) return;
+      limit--;
       const pick = pool.length ? pool.splice(Math.floor(Math.random() * pool.length), 1)[0] : null;
-      this.prizes.push({ id: pick ? pick.id : 'coins', homeX: x, x, y: UfoCatcher.FLOOR, color: colors[Math.floor(Math.random() * colors.length)] });
-    }
+      const id = pick ? pick.id : 'coins';
+      const color = id === 'coins' || UfoCatcher.RARE.includes(id) ? '#ffd86b' : UfoCatcher.COLORS[Math.floor(Math.random() * UfoCatcher.COLORS.length)];
+      this.prizes.push({ id, slot: i, homeX: slot.x, homeY: slot.y, x: slot.x, y: slot.y, color, rare: UfoCatcher.RARE.includes(id) });
+    });
+    // 手前の列を後から描く
+    this.prizes.sort((a, b) => a.homeY - b.homeY);
   }
 
   get canPlay() { return this.state === 'idle' && Storage.getCoins() >= UfoCatcher.COST; }
@@ -83,15 +109,19 @@ class UfoCatcher {
         c.x = Math.min(UfoCatcher.W - 44, c.x + 120 * dt);
         if (c.x >= UfoCatcher.W - 44) this.state = 'down';
         break;
-      case 'down':
+      case 'down': {
+        // 真下に景品があれば、その高さで止まる
+        const under = this._nearest(c.x);
+        const stop = (under && Math.abs(under.x - c.x) < 40 ? under.y : UfoCatcher.FLOOR) - 44;
         c.y += 170 * dt;
-        if (c.y >= UfoCatcher.FLOOR - 44) { c.y = UfoCatcher.FLOOR - 44; this.state = 'grab'; this.t = 0; }
+        if (c.y >= stop) { c.y = stop; this.state = 'grab'; this.t = 0; }
         break;
+      }
       case 'grab': {
         this.t += dt;
         c.open = Math.max(0, 1 - this.t * 2.5);
         if (this.t >= 0.5) {
-          const target = this.prizes.reduce((best, p) => (!best || Math.abs(p.x - c.x) < Math.abs(best.x - c.x) ? p : best), null);
+          const target = this._nearest(c.x);
           const off = target ? Math.abs(target.x - c.x) : 999;
           // 真ん中に近いほどつかみやすい
           const chance = off < 10 ? 0.75 : off < 22 ? 0.45 : off < 32 ? 0.18 : 0;
@@ -112,7 +142,7 @@ class UfoCatcher {
         // 途中でポロッと落ちることがある(取り出し口の手前ほど落ちにくい)
         if (!this.slipChecked && c.x < this.held.homeX - 30) {
           this.slipChecked = true;
-          if (Math.random() < 0.3) { this.dropping = this.held; this.held = null; this.state = 'return'; c.open = 1; }
+          if (Math.random() < 0.3) { this.dropping = this.held; this.held = null; this.state = 'return'; c.open = 1; this.oshii = this.time; }
         }
         if (this.held && c.x <= UfoCatcher.CHUTE / 2) { this._win(this.held); this.held = null; c.open = 1; this.state = 'return'; }
         break;
@@ -127,8 +157,8 @@ class UfoCatcher {
     // 落ちた景品は床まで落ちる(少し取り出し口寄りに)
     if (this.dropping) {
       const p = this.dropping;
-      p.y = Math.min(UfoCatcher.FLOOR, p.y + 380 * dt);
-      if (p.y >= UfoCatcher.FLOOR) {
+      p.y = Math.min(p.homeY, p.y + 380 * dt);
+      if (p.y >= p.homeY) {
         p.x = Math.max(UfoCatcher.CHUTE + 10, p.x);
         p.homeX = Math.min(p.homeX, p.x);
         this.dropping = null;
@@ -146,17 +176,13 @@ class UfoCatcher {
     else Accessories.give(prize.id);
     this.lastWin = { id: prize.id, t: this.time };
     this.hooks.onWin && this.hooks.onWin(prize);
-    // 空いた所に新しい景品(元の位置に置き直す)
-    const slots = [130, 205, 275];
-    for (const x of slots) {
-      if (!this.prizes.some(p => Math.abs(p.homeX - x) < 40)) {
-        const owned = new Set(Accessories.owned());
-        const pool = Accessories.LIST.filter(a => a.source === 'ufo' && !owned.has(a.id) && !this.prizes.some(p => p.id === a.id));
-        const pick = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
-        this.prizes.push({ id: pick ? pick.id : 'coins', homeX: x, x, y: UfoCatcher.FLOOR, color: prize.color });
-        break;
-      }
-    }
+    // 空いた所に新しい景品を1つ
+    this._restock(1);
+  }
+
+  /** アームの真下にいちばん近い景品 */
+  _nearest(x) {
+    return this.prizes.reduce((best, p) => (p === this.dropping ? best : !best || Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best), null);
   }
 
   /* ---- 描画 ---- */
@@ -182,7 +208,7 @@ class UfoCatcher {
     const items = [];
     for (let row = 0; row < 2; row++) {
       for (let x = UfoCatcher.CHUTE + 22 + row * 12; x < UfoCatcher.W + 10; x += 24 + rnd() * 8) {
-        items.push({ type: types[Math.floor(rnd() * types.length)], x, y: UfoCatcher.FLOOR + 26 + row * 16 + rnd() * 4, size: 30 + rnd() * 8, rot: (rnd() - 0.5) * 0.9 });
+        items.push({ type: types[Math.floor(rnd() * types.length)], x, y: UfoCatcher.FLOOR + 34 + row * 16 + rnd() * 4, size: 30 + rnd() * 8, rot: (rnd() - 0.5) * 0.9 });
       }
     }
     this.pileItems = items;
@@ -197,36 +223,94 @@ class UfoCatcher {
     g.lineJoin = 'round';
     g.lineCap = 'round';
 
-    // 空
+    // 夜空(ニューヨークの夜)
     const sky = g.createLinearGradient(0, 0, 0, F);
-    sky.addColorStop(0, '#9be0f7');
-    sky.addColorStop(1, '#d9f5ff');
+    sky.addColorStop(0, '#120a35');
+    sky.addColorStop(0.55, '#3a1f6e');
+    sky.addColorStop(1, '#c0508f');
     g.fillStyle = sky;
     g.fillRect(0, 0, W, H);
-    // 雲
-    g.fillStyle = 'rgba(255,255,255,0.9)';
-    for (const [x, y, k] of [[88, 70, 1], [240, 110, 0.8], [160, 46, 0.6]]) {
-      const dx = ((x + this.time * 6 * k) % (W + 80)) - 40;
+    // またたく星
+    for (const [x, y, ph] of UfoCatcher.STARS) {
+      g.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(this.time * 1.6 + ph));
+      g.fillStyle = '#fff6d6';
+      g.fillRect(x, y, 2, 2);
+    }
+    g.globalAlpha = 1;
+    // お月さま
+    g.fillStyle = 'rgba(255,240,200,0.18)';
+    g.beginPath(); g.arc(282, 40, 22, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#fff1c4';
+    g.beginPath(); g.arc(282, 40, 13, 0, Math.PI * 2); g.fill();
+    // サーチライト
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    for (const [bx, sp, ph] of [[110, 0.5, 0], [250, 0.4, 2]]) {
+      const a = -Math.PI / 2 + Math.sin(this.time * sp + ph) * 0.45;
+      const beam = g.createLinearGradient(bx, F, bx + Math.cos(a) * 220, F + Math.sin(a) * 220);
+      beam.addColorStop(0, 'rgba(255,220,255,0.22)');
+      beam.addColorStop(1, 'rgba(255,220,255,0)');
+      g.fillStyle = beam;
       g.beginPath();
-      g.arc(dx, y, 14 * k, 0, Math.PI * 2); g.arc(dx + 16 * k, y - 6 * k, 17 * k, 0, Math.PI * 2);
-      g.arc(dx + 34 * k, y, 13 * k, 0, Math.PI * 2); g.rect(dx, y, 34 * k, 13 * k);
-      g.fill();
+      g.moveTo(bx, F - 40);
+      g.lineTo(bx + Math.cos(a - 0.07) * 240, F - 40 + Math.sin(a - 0.07) * 240);
+      g.lineTo(bx + Math.cos(a + 0.07) * 240, F - 40 + Math.sin(a + 0.07) * 240);
+      g.closePath(); g.fill();
     }
-    // 遠くの街
-    g.fillStyle = '#bfe6f2';
-    for (const [x, w, h] of [[70, 34, 70], [104, 26, 46], [132, 40, 96], [176, 30, 58], [208, 44, 82], [256, 28, 50], [286, 40, 74]]) {
-      g.beginPath(); g.roundRect(x, F - h + 10, w, h, [6, 6, 0, 0]); g.fill();
+    g.restore();
+    // 遠くのビル(エンパイア・ステートとクライスラーっぽいシルエット)
+    g.fillStyle = '#3b2266';
+    for (const [x, w, h] of [[66, 28, 70], [92, 22, 52], [176, 26, 60], [262, 30, 78], [292, 30, 54]]) {
+      g.fillRect(x, F - h, w, h);
     }
-    g.fillStyle = 'rgba(255,255,255,0.7)';
-    for (const [x, h] of [[132, 96], [208, 82], [70, 70]]) {
-      for (let i = 0; i < 3; i++) g.fillRect(x + 8, F - h + 22 + i * 18, 8, 8);
+    // とんがり屋根のビル
+    g.beginPath();
+    g.moveTo(118, F); g.lineTo(118, F - 92); g.lineTo(126, F - 104); g.lineTo(130, F - 132); g.lineTo(134, F - 104);
+    g.lineTo(142, F - 92); g.lineTo(142, F); g.closePath(); g.fill();
+    // 階段状の塔とアンテナ
+    g.fillRect(206, F - 104, 40, 104);
+    g.fillRect(212, F - 120, 28, 18);
+    g.fillRect(218, F - 132, 16, 14);
+    g.fillRect(224, F - 152, 4, 22);
+    // アンテナの赤いランプ
+    g.fillStyle = Math.sin(this.time * 4) > 0 ? '#ff4d6d' : 'rgba(255,77,109,0.3)';
+    g.beginPath(); g.arc(226, F - 153, 2.4, 0, Math.PI * 2); g.fill();
+    // 窓のあかり(たまに消えたりつく)
+    for (const [x, y, ph] of UfoCatcher.WINDOWS) {
+      const on = Math.sin(this.time * 0.7 + ph * 9) > -0.6;
+      g.fillStyle = on ? '#ffd86b' : '#4d3080';
+      g.fillRect(x, F - y, 3, 4);
     }
-    // 草原
-    const grass = g.createLinearGradient(0, F, 0, H);
-    grass.addColorStop(0, '#b8e39b');
-    grass.addColorStop(1, '#8fd16f');
-    g.fillStyle = grass;
-    g.beginPath(); g.moveTo(CH, F + 8); g.quadraticCurveTo(W * 0.6, F - 6, W, F + 6); g.lineTo(W, H); g.lineTo(CH, H); g.closePath(); g.fill();
+    // 手前の街並み(屋上の給水タンク)
+    g.fillStyle = '#24143f';
+    for (const [x, w, h] of [[64, 40, 30], [104, 30, 20], [134, 46, 34], [180, 34, 24], [214, 44, 30], [258, 28, 18], [286, 34, 28]]) {
+      g.fillRect(x, F - h, w, h);
+    }
+    for (const x of [78, 150, 232, 298]) {
+      const y = { 78: 30, 150: 34, 232: 30, 298: 28 }[x];
+      g.fillRect(x, F - y - 10, 10, 8);
+      g.beginPath(); g.moveTo(x - 1, F - y - 10); g.lineTo(x + 5, F - y - 16); g.lineTo(x + 11, F - y - 10); g.fill();
+      g.fillRect(x + 1, F - y - 2, 1.5, 2); g.fillRect(x + 7.5, F - y - 2, 1.5, 2);
+    }
+    // ゆか:ネオンのステージ
+    const floor = g.createLinearGradient(0, F, 0, H);
+    floor.addColorStop(0, '#5a2a8a');
+    floor.addColorStop(1, '#2a144a');
+    g.fillStyle = floor;
+    g.beginPath(); g.moveTo(CH, F - 8); g.lineTo(W, F - 8); g.lineTo(W, H); g.lineTo(CH, H); g.closePath(); g.fill();
+    // ゆかのふち(シアンのネオン管)
+    g.save();
+    g.shadowColor = '#2be3ff'; g.shadowBlur = 10;
+    g.strokeStyle = '#bff6ff'; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(CH + 2, F - 8); g.lineTo(W, F - 8); g.stroke();
+    g.restore();
+    // ゆかのチェック模様
+    g.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let yy = 0; yy < 3; yy++) {
+      for (let xx = 0; xx < 12; xx++) {
+        if ((xx + yy) % 2) g.fillRect(CH + xx * 22, F - 6 + yy * 22, 22, 22);
+      }
+    }
 
     // エラーの山
     for (const it of this._pile()) {
@@ -240,7 +324,10 @@ class UfoCatcher {
     }
 
     // 取り出し口:ワープホール
-    this._drawWarp(g, CH / 2, F + 26);
+    this._drawWarp(g, CH / 2, F + 30);
+    // 取り出し口のふち
+    g.fillStyle = 'rgba(255,255,255,0.85)';
+    g.beginPath(); g.roundRect(CH - 4, F - 30, 6, H - F + 30, 3); g.fill();
 
     // 景品
     for (const p of this.prizes) if (p !== this.held) this._drawPrize(g, p);
@@ -251,10 +338,25 @@ class UfoCatcher {
 
     // 取ったときの演出
     this._drawWin(g);
+    this._drawOshii(g);
 
-    // ガラスの反射
-    g.fillStyle = 'rgba(255,255,255,0.16)';
-    g.beginPath(); g.moveTo(W * 0.64, 0); g.lineTo(W * 0.76, 0); g.lineTo(W * 0.48, H); g.lineTo(W * 0.36, H); g.closePath(); g.fill();
+  }
+
+  /** 運んでいる途中で落ちたら「おしい！」 */
+  _drawOshii(g) {
+    if (this.oshii == null) return;
+    const t = this.time - this.oshii;
+    if (t > 1.1) return;
+    g.save();
+    g.globalAlpha = t > 0.8 ? 1 - (t - 0.8) / 0.3 : 1;
+    g.translate(UfoCatcher.W / 2, 120 - t * 14);
+    const s = Math.min(1, t / 0.15);
+    g.scale(0.6 + 0.4 * s, 0.6 + 0.4 * s);
+    g.font = '900 30px "M PLUS Rounded 1c", sans-serif';
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 6; g.strokeStyle = '#6a4ce0'; g.strokeText('おしい！', 0, 0);
+    g.fillStyle = '#ffffff'; g.fillText('おしい！', 0, 0);
+    g.restore();
   }
 
   _drawWarp(g, x, y) {
@@ -289,9 +391,30 @@ class UfoCatcher {
   }
 
   _drawPrize(g, p) {
-    const r = 30;
+    const r = UfoCatcher.R;
     g.save();
     g.translate(p.x, p.y);
+    // めずらしい景品は後ろが光る
+    if (p.rare) {
+      const glow = 0.55 + 0.35 * Math.sin(this.time * 4 + p.homeX);
+      const grad = g.createRadialGradient(0, 0, r * 0.6, 0, 0, r * 1.7);
+      grad.addColorStop(0, `rgba(255, 236, 140, ${glow})`);
+      grad.addColorStop(1, 'rgba(255, 236, 140, 0)');
+      g.fillStyle = grad;
+      g.beginPath(); g.arc(0, 0, r * 1.7, 0, Math.PI * 2); g.fill();
+      g.save();
+      g.rotate(this.time * 1.5);
+      g.fillStyle = '#fff6b0';
+      for (let i = 0; i < 4; i++) {
+        g.rotate(Math.PI / 2);
+        const k = 0.6 + 0.4 * Math.sin(this.time * 6 + i);
+        g.beginPath(); g.moveTo(0, -r * 1.25 - 7 * k); g.lineTo(2.5, -r * 1.25); g.lineTo(0, -r * 1.25 + 7 * k); g.lineTo(-2.5, -r * 1.25); g.closePath(); g.fill();
+      }
+      g.restore();
+    }
+    // 床の影
+    g.fillStyle = 'rgba(0,0,0,0.12)';
+    g.beginPath(); g.ellipse(0, r * 0.92, r * 0.8, r * 0.18, 0, 0, Math.PI * 2); g.fill();
     g.strokeStyle = 'rgba(74, 59, 50, 0.55)';
     g.lineWidth = 2.5;
     // 下半分(色)
@@ -303,15 +426,15 @@ class UfoCatcher {
     // 中身
     if (p.id === 'coins') {
       const coin = this._coinImage();
-      if (coin) g.drawImage(coin, -17, -24, 34, 34);
+      if (coin) g.drawImage(coin, -19, -26, 38, 38);
     } else {
-      Accessories.drawCentered(g, p.id, 48);
+      Accessories.drawCentered(g, p.id, 54);
     }
     g.fillStyle = 'rgba(255,255,255,0.4)';
     g.fillRect(-r + 2, -2, r * 2 - 4, 4);
     g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
     g.fillStyle = 'rgba(255,255,255,0.9)';
-    g.beginPath(); g.ellipse(-11, -16, 7, 3.5, -0.7, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(-r * 0.37, -r * 0.53, 7, 3.5, -0.7, 0, Math.PI * 2); g.fill();
     g.restore();
   }
 
@@ -339,8 +462,8 @@ class UfoCatcher {
     // ツメ(閉じるとカプセルの両わきをはさむ)
     for (const s of [-1, 1]) {
       const jx = c.x + s * 16, jy = c.y + 2;
-      const kx = c.x + s * (34 + c.open * 10), ky = c.y + 20;
-      const tx = c.x + s * (27 + c.open * 14), ty = c.y + 42;
+      const kx = c.x + s * (37 + c.open * 10), ky = c.y + 20;
+      const tx = c.x + s * (30 + c.open * 14), ty = c.y + 44;
       g.strokeStyle = '#c3ced8';
       g.lineWidth = 7;
       g.beginPath(); g.moveTo(jx, jy); g.lineTo(kx, ky); g.lineTo(tx, ty); g.stroke();

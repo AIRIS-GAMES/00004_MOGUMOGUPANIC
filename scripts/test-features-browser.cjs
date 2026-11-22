@@ -72,6 +72,14 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       out.winsAfterMiss = wins.length;
       Storage.setCoins(50);
       out.canPlayPoor = ufo.canPlay;
+      // 景品の棚:UFOの景品8つが全部並び、持っていない物は鍵つき
+      Storage.setCoins(1000);
+      g.openUfo();
+      const ufoOwned = Accessories.LIST.filter(x => x.source === 'ufo' && Accessories.has(x.id)).length;
+      out.shelfUfo = [...document.querySelectorAll('#ufo-owned .ufo-item')].length >= 8;
+      out.shelfLocked = document.querySelectorAll('#ufo-owned .ufo-item.locked').length === 8 - ufoOwned;
+      out.shelfCount = document.getElementById('ufo-count').textContent === `${ufoOwned}/8`;
+      g.ufo.stop(); g.showTitle();
 
       // --- Wind ---
       const begin = id => {
@@ -123,13 +131,16 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.equal(r.hasCrown, true);
     assert.equal(r.specialHasRare, 1, 'only the drone has a rare variant on the special page');
 
-    assert.equal(r.prizeCount, 3);
+    assert.equal(r.prizeCount, UfoCatcher_SLOTS);
     assert.equal(r.prizeIdsUfo, true);
     assert.equal(r.pressed, true);
     assert.equal(r.coinsAfterPress, 900);
     assert.equal(r.pressWhileBusy, false);
     assert.equal(r.gotAcc, true, `wins ${JSON.stringify(r.wins)}`);
-    assert.equal(r.restocked, 3);
+    assert.equal(r.restocked, UfoCatcher_SLOTS);
+    assert.equal(r.shelfUfo, true);
+    assert.equal(r.shelfLocked, true);
+    assert.equal(r.shelfCount, true);
     assert.equal(r.idle, 'idle');
     assert.equal(r.missCost, 100);
     assert.equal(r.winsAfterMiss, 1);
@@ -150,3 +161,4 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     await browser.close();
   }
 })().catch(e => { console.error(e); process.exit(1); });
+const UfoCatcher_SLOTS = 6;

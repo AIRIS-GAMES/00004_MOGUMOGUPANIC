@@ -27,9 +27,8 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       g.showTitle();
       out.unlockedClass = document.getElementById('btn-endless').classList.contains('locked');
 
-      // しきい値は増え続ける
-      out.thresholds = [1, 2, 3, 10, 11, 20].map(Endless.threshold);
-      out.areaFor = [0, Endless.threshold(1), Endless.threshold(3) + 1].map(Endless.areaFor);
+      // エリアごとに大きくなれる上限が上がる(最後は最大まで)
+      out.caps = [1, 2, 3, 8, 20].map(Endless.scaleCap);
 
       const begin = () => {
         g.startGame(1, [], { endless: true }); g.stageIntroTimer = 0; g._updateStageIntro(0.01);
@@ -51,12 +50,18 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
       g._consume(g.spawner.pool.find(o => o.active && o.state === 'idle' && !o.hazard && !o.gimmick));
       out.capped = g.timeLeft <= Endless.MAX_TIME;
 
-      // スコアが区切りを越えるとエリアが進み、街と仕掛けが入れ替わる
+      // 上限より大きくはならない
+      g.player.scale = 3.2; g.player.grow(5);
+      out.capped1 = g.player.scale === Endless.scaleCap(1);
+      // スコアではエリアは進まない。40秒たつと進み、街と仕掛けが入れ替わる
       const theme1 = g.getStage('endless').theme;
-      g.score = Endless.threshold(2) + 1;
+      g.score = 1e9; g._checkTarget();
+      out.notByScore = g.endlessRun.area === 1;
       g.timeLeft = 5;
-      g._checkTarget();
+      g.endlessRun.areaT = Endless.AREA_TIME - 0.001;
+      g._updatePlay(1 / 60, 1 / 60);
       out.area = g.endlessRun.area;
+      out.cap2 = g.player.maxScale === Endless.scaleCap(2);
       out.theme = g.getStage('endless').theme !== theme1;
       out.bonus = g.timeLeft > 5;
       out.stillPlaying = g.state === 'play';
@@ -93,8 +98,11 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.equal(r.lockedClass, true);
     assert.notEqual(r.lockedState, 'intro');
     assert.equal(r.unlockedClass, false);
-    for (let i = 1; i < r.thresholds.length; i++) assert.ok(r.thresholds[i] > r.thresholds[i - 1]);
-    assert.deepEqual(r.areaFor, [1, 2, 4]);
+    for (let i = 1; i < r.caps.length; i++) assert.ok(r.caps[i] >= r.caps[i - 1]);
+    assert.equal(r.caps[r.caps.length - 1], 12);
+    assert.equal(r.capped1, true);
+    assert.equal(r.notByScore, true);
+    assert.equal(r.cap2, true);
     assert.equal(r.state, 'play');
     assert.equal(r.time, 30);
     assert.equal(r.boosts, 0);
@@ -102,15 +110,15 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.equal(r.intro, 'ENDLESS');
     assert.equal(r.gained, true);
     assert.equal(r.capped, true);
-    assert.equal(r.area, 3);
+    assert.equal(r.area, 2);
     assert.equal(r.theme, true);
     assert.equal(r.bonus, true);
     assert.equal(r.stillPlaying, true);
     assert.equal(r.gimmick, true);
-    assert.match(r.hud, /^AREA 3/);
+    assert.match(r.hud, /^AREA 2/);
     assert.equal(r.hazardNear, 0);
     assert.equal(r.endState, 'result');
-    assert.ok(r.best.score > 0 && r.best.area >= 3, JSON.stringify(r.best));
+    assert.ok(r.best.score > 0 && r.best.area >= 2, JSON.stringify(r.best));
     assert.ok(r.coins > 0);
     assert.equal(r.resultEndless, true);
     assert.match(r.story, /AREA \d+/);
@@ -119,7 +127,7 @@ const base = process.env.STARTUP_TEST_URL || 'http://localhost:8080/';
     assert.equal(r.normalEndless, false);
     assert.equal(r.normalResult, false);
     assert.deepEqual(errors, []);
-    console.log('PASS: endless lock/unlock, areas + thresholds, time gain/cap, area switch, result + best + coins, back to stages.');
+    console.log('PASS: endless lock/unlock, 40s areas + size cap, time gain/cap, area switch, result + best + coins, back to stages.');
   } finally {
     await browser.close();
   }
